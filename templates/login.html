@@ -1,0 +1,123 @@
+{% extends "layout.html" %}
+{% block title %}登录 / 注册 - 世界杯竞猜{% endblock %}
+{% block content %}
+
+<div class="login-container">
+    <div id="login-form">
+        <h2 style="text-align:center;">🔑 登录</h2>
+        <div class="card">
+            <label for="login-nickname">昵称</label>
+            <input type="text" id="login-nickname" placeholder="你的群昵称" maxlength="20" autocomplete="off">
+
+            <label for="login-password">密码</label>
+            <input type="password" id="login-password" placeholder="输入密码" autocomplete="off">
+
+            <button id="login-btn" style="width:100%;">登录</button>
+            <p id="login-error" style="color:red;display:none;margin-top:0.5rem;"></p>
+            <p style="text-align:center;margin-top:1rem;font-size:0.9rem;">
+                没有账号？<a href="#" onclick="toggleForm();return false;">点此注册</a>
+            </p>
+        </div>
+    </div>
+
+    <div id="register-form" style="display:none;">
+        <h2 style="text-align:center;">📝 注册</h2>
+        <div class="card">
+            <label for="reg-nickname">昵称</label>
+            <input type="text" id="reg-nickname" placeholder="你的群昵称（方便大家认出你）" maxlength="20" autocomplete="off">
+
+            <label for="reg-password">密码</label>
+            <input type="password" id="reg-password" placeholder="至少3位" autocomplete="off">
+
+            <label for="reg-password2">确认密码</label>
+            <input type="password" id="reg-password2" placeholder="再输一遍" autocomplete="off">
+
+            <button id="register-btn" style="width:100%;">注册</button>
+            <p id="register-error" style="color:red;display:none;margin-top:0.5rem;"></p>
+            <p style="text-align:center;margin-top:1rem;font-size:0.9rem;">
+                已有账号？<a href="#" onclick="toggleForm();return false;">点此登录</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleForm() {
+    const lf = document.getElementById('login-form');
+    const rf = document.getElementById('register-form');
+    lf.style.display = lf.style.display === 'none' ? 'block' : 'none';
+    rf.style.display = rf.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('login-error').style.display = 'none';
+    document.getElementById('register-error').style.display = 'none';
+}
+
+document.getElementById('login-btn').addEventListener('click', async () => {
+    const nickname = document.getElementById('login-nickname').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    if (!nickname || !password) {
+        showError('login-error', '请填写昵称和密码');
+        return;
+    }
+    const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({nickname, password})
+    });
+    const data = await res.json();
+    if (data.ok) {
+        window.location.href = data.is_admin ? '/admin' : '/';
+    } else {
+        showError('login-error', data.msg);
+    }
+});
+
+document.getElementById('register-btn').addEventListener('click', async () => {
+    const nickname = document.getElementById('reg-nickname').value.trim();
+    const password = document.getElementById('reg-password').value.trim();
+    const password2 = document.getElementById('reg-password2').value.trim();
+    if (!nickname || !password) {
+        showError('register-error', '请填写昵称和密码');
+        return;
+    }
+    if (password !== password2) {
+        showError('register-error', '两次密码不一致');
+        return;
+    }
+    if (password.length < 3) {
+        showError('register-error', '密码至少3位');
+        return;
+    }
+    const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({nickname, password})
+    });
+    const data = await res.json();
+    if (data.ok) {
+        window.location.href = '/';
+    } else {
+        showError('register-error', data.msg);
+    }
+});
+
+function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+// Enter key to submit
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const lf = document.getElementById('login-form');
+        if (lf.style.display !== 'none') {
+            document.getElementById('login-btn').click();
+        } else {
+            document.getElementById('register-btn').click();
+        }
+    }
+});
+</script>
+
+{% endblock %}

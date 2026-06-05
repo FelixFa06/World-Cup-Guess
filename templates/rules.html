@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+{% block title %}竞猜规则 - 世界杯竞猜{% endblock %}
+{% block content %}
+
+<h2>📜 竞猜活动规则</h2>
+
+<div class="card">
+    <h3>活动简介</h3>
+    <p>2026年世界杯期间，原神群群友参与竞猜活动。活动分为 <strong>3 个项目</strong>，各个项目中竞猜获得积分，3 个项目累计积分得到原友排名，<strong>前三名有奖</strong>。</p>
+</div>
+
+<div class="card">
+    <h3>🏆 项目一：冠军、金靴、金球</h3>
+    <p>竞猜冠军球队、金靴得主、金球奖得主。</p>
+    <p>决赛结束后结算本项目得分：</p>
+    <ul>
+        <li>猜对冠军：<strong>5 分</strong></li>
+        <li>猜对金靴：<strong>5 分</strong></li>
+        <li>猜对金球：<strong>5 分</strong></li>
+        <li>全部猜对：<strong>15 分</strong></li>
+    </ul>
+    <p style="color:#888;font-size:0.9rem;">📌 提交截止时间：第一场淘汰赛开赛前。截止前可修改。</p>
+</div>
+
+<div class="card">
+    <h3>🏟️ 项目二：四强</h3>
+    <p>竞猜四强球队。本项目将于<strong>16强出炉后开放，16进8开赛前截止</strong>。</p>
+    <p>世界杯淘汰赛 32 支球队分为 4 个 1/4 分区，每个分区 8 支球队。群友在每个 1/4 分区中选择一支可能进入四强的球队，共预测 4 支。</p>
+    <ul>
+        <li>每猜对一支：<strong>2 分</strong></li>
+        <li>满分：<strong>8 分</strong></li>
+    </ul>
+</div>
+
+<div class="card">
+    <h3>⚽ 项目三：单场淘汰赛</h3>
+    <p>世界杯共有 <strong>32 场</strong> 淘汰赛（R32→R16→QF→SF→三四名→决赛），每场开赛前群友们竞猜该场比赛比分。</p>
+    <p style="color:#d32f2f;font-size:0.85rem;">⚠️ 只考虑常规时间比分，不考虑加时、点球大战。</p>
+
+    <h4>积分规则</h4>
+    <ul>
+        <li>比分完全正确：<strong>3 分</strong></li>
+        <li>比分不完全正确，但胜负关系正确（胜/负/平）：<strong>1 分</strong></li>
+    </ul>
+
+    <h4>🏅 决赛加成</h4>
+    <p>决赛竞猜得分翻倍：比分全对 <strong>6 分</strong>，胜负关系对 <strong>2 分</strong>。</p>
+
+    <h4>💥 大球加成</h4>
+    <p>当该场比赛常规时间 <strong>总进球数 ≥ 5</strong> 或 <strong>分差 ≥ 3</strong>，猜对比分可得 <strong>5 分</strong>（决赛则为 10 分）。</p>
+
+    <p style="color:#888;font-size:0.9rem;">📌 单场比赛未参加预测不得分，且不影响其他场次预测。</p>
+
+    <h4>举例说明</h4>
+    <blockquote>
+        <p><strong>半决赛：葡萄牙 vs 英格兰</strong></p>
+        <p>赛前，大福预测葡1：1英，闫江帆预测葡2：1英，法童预测葡8：1英</p>
+        <p>比赛结果为：<strong>葡萄牙 8-1 英格兰</strong></p>
+        <p>大福得 <strong>0 分</strong>，闫江帆得 <strong>1 分</strong>（胜负关系对），法童得 <strong>5 分</strong>（比分全对 + 大球加成：总进球9≥5，分差7≥3）</p>
+    </blockquote>
+</div>
+
+<div class="card">
+    <h3>🌾 收米之星</h3>
+    <p>以比赛日为单位，每天颁给前一天所有比赛结算后得分最高的群友。</p>
+    <ul>
+        <li>多人并列则<strong>共享称号</strong></li>
+        <li>纯荣誉，不加分</li>
+        <li>整个赛事结束后，获得次数最多者授予 <strong>「收米界最长的河」🏆</strong> 称号</li>
+        <li>若并列最多，共享「长河」称号</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h3>📊 积分与排名</h3>
+    <p>淘汰赛开始后，每场比赛之后会更新最新积分榜。希望大家多多参与，多多关注，多玩原神。</p>
+</div>
+
+{% endblock %}

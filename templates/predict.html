@@ -1,0 +1,172 @@
+{% extends "layout.html" %}
+{% block title %}提交竞猜 - 世界杯竞猜{% endblock %}
+{% block content %}
+
+<h2>📝 竞猜中心</h2>
+
+<!-- Project 1 -->
+<div class="card">
+    <div class="card-header">🏆 项目一：冠军 · 金靴 · 金球</div>
+    {% if p1_deadline_passed %}
+        <p style="color:#d32f2f;">⛔ 项目一已截止（第一场淘汰赛已开始）</p>
+        {% if p1_pick %}
+        <p>你的选择：🏆 <strong>{{ p1_pick.champion_team }}</strong> | 👟 <strong>{{ p1_pick.golden_boot_player }}</strong> | 🏅 <strong>{{ p1_pick.golden_ball_player }}</strong></p>
+        {% endif %}
+    {% else %}
+        <form id="p1-form">
+            <div class="grid">
+                <div>
+                    <label for="p1-champion">🏆 冠军球队</label>
+                    <input type="text" id="p1-champion" placeholder="例如：阿根廷" value="{{ p1_pick.champion_team if p1_pick else '' }}" required>
+                </div>
+                <div>
+                    <label for="p1-boot">👟 金靴得主</label>
+                    <input type="text" id="p1-boot" placeholder="例如：姆巴佩" value="{{ p1_pick.golden_boot_player if p1_pick else '' }}" required>
+                </div>
+                <div>
+                    <label for="p1-ball">🏅 金球奖得主</label>
+                    <input type="text" id="p1-ball" placeholder="例如：维尼修斯" value="{{ p1_pick.golden_ball_player if p1_pick else '' }}" required>
+                </div>
+            </div>
+            <button type="submit">💾 保存项目一</button>
+            <p id="p1-msg" style="margin-top:0.5rem;"></p>
+        </form>
+    {% endif %}
+</div>
+
+<!-- Project 2 -->
+<div class="card">
+    <div class="card-header">🏟️ 项目二：四强预测</div>
+    {% if not p2_open %}
+        <p style="color:#888;">⏳ 项目二将在16强对阵出炉后开放，敬请期待。</p>
+    {% elif p2_deadline_passed %}
+        <p style="color:#d32f2f;">⛔ 项目二已截止（16进8已开赛）</p>
+        {% if p2_pick %}
+        <p>你的选择：A区 <strong>{{ p2_pick.zone_a_team }}</strong> | B区 <strong>{{ p2_pick.zone_b_team }}</strong> | C区 <strong>{{ p2_pick.zone_c_team }}</strong> | D区 <strong>{{ p2_pick.zone_d_team }}</strong></p>
+        {% endif %}
+    {% else %}
+        <p style="color:#888;font-size:0.9rem;">从每个 1/4 分区中选一支可能进入四强的球队（每区8选1）。四支球队不能重复。</p>
+        <form id="p2-form">
+            <div class="grid">
+                <div>
+                    <label for="p2-zone-a">🔴 A区球队</label>
+                    <input type="text" id="p2-zone-a" placeholder="A区选择" value="{{ p2_pick.zone_a_team if p2_pick else '' }}" required>
+                </div>
+                <div>
+                    <label for="p2-zone-b">🟡 B区球队</label>
+                    <input type="text" id="p2-zone-b" placeholder="B区选择" value="{{ p2_pick.zone_b_team if p2_pick else '' }}" required>
+                </div>
+                <div>
+                    <label for="p2-zone-c">🟢 C区球队</label>
+                    <input type="text" id="p2-zone-c" placeholder="C区选择" value="{{ p2_pick.zone_c_team if p2_pick else '' }}" required>
+                </div>
+                <div>
+                    <label for="p2-zone-d">🔵 D区球队</label>
+                    <input type="text" id="p2-zone-d" placeholder="D区选择" value="{{ p2_pick.zone_d_team if p2_pick else '' }}" required>
+                </div>
+            </div>
+            <button type="submit">💾 保存项目二</button>
+            <p id="p2-msg" style="margin-top:0.5rem;"></p>
+        </form>
+    {% endif %}
+</div>
+
+<!-- Project 3 -->
+<div class="card">
+    <div class="card-header">⚽ 项目三：单场比分预测</div>
+    {% if open_matches %}
+        <p style="color:#888;font-size:0.9rem;">以下比赛正在接受预测。注意：只考虑常规时间比分。</p>
+        {% for match in open_matches %}
+        {% set pred = user_predictions.get(match.id) %}
+        <div class="match-card">
+            <span class="round-badge {% if match.is_final %}final{% endif %}">{{ match.round_name }}</span>
+            <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
+            <span class="match-info">{{ match.match_time.strftime('%m/%d %H:%M') }}</span>
+            <div class="prediction-input">
+                <input type="number" id="score-a-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_a if pred else '' }}" placeholder="0" style="width:50px;">
+                <span>-</span>
+                <input type="number" id="score-b-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_b if pred else '' }}" placeholder="0" style="width:50px;">
+                <button onclick="submitMatchPrediction({{ match.id }})" style="font-size:0.85rem;padding:0.25rem 0.5rem;">保存</button>
+            </div>
+            <span id="match-msg-{{ match.id }}" style="font-size:0.8rem;color:var(--primary);"></span>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color:#888;">暂无开放的比赛。等管理员开放预测通道。</p>
+    {% endif %}
+</div>
+
+<script>
+// Project 1 submit
+document.getElementById('p1-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        champion: document.getElementById('p1-champion').value.trim(),
+        golden_boot: document.getElementById('p1-boot').value.trim(),
+        golden_ball: document.getElementById('p1-ball').value.trim(),
+    };
+    if (!data.champion || !data.golden_boot || !data.golden_ball) {
+        showMsg('p1-msg', '请填写三项预测', 'red');
+        return;
+    }
+    const res = await fetch('/api/predict/p1', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    showMsg('p1-msg', r.msg, r.ok ? 'green' : 'red');
+});
+
+// Project 2 submit
+document.getElementById('p2-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        zone_a: document.getElementById('p2-zone-a').value.trim(),
+        zone_b: document.getElementById('p2-zone-b').value.trim(),
+        zone_c: document.getElementById('p2-zone-c').value.trim(),
+        zone_d: document.getElementById('p2-zone-d').value.trim(),
+    };
+    if (!data.zone_a || !data.zone_b || !data.zone_c || !data.zone_d) {
+        showMsg('p2-msg', '请填写四个分区的选择', 'red');
+        return;
+    }
+    if (new Set([data.zone_a, data.zone_b, data.zone_c, data.zone_d]).size < 4) {
+        showMsg('p2-msg', '四个分区不能选重复球队', 'red');
+        return;
+    }
+    const res = await fetch('/api/predict/p2', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    showMsg('p2-msg', r.msg, r.ok ? 'green' : 'red');
+});
+
+// Project 3 submit
+async function submitMatchPrediction(matchId) {
+    const scoreA = parseInt(document.getElementById(`score-a-${matchId}`).value);
+    const scoreB = parseInt(document.getElementById(`score-b-${matchId}`).value);
+    if (isNaN(scoreA) || isNaN(scoreB) || scoreA < 0 || scoreB < 0) {
+        showMsg(`match-msg-${matchId}`, '请输入有效的比分', 'red');
+        return;
+    }
+    const res = await fetch(`/api/predict/match/${matchId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({score_a: scoreA, score_b: scoreB})
+    });
+    const r = await res.json();
+    showMsg(`match-msg-${matchId}`, r.msg, r.ok ? 'green' : 'red');
+}
+
+function showMsg(id, msg, color) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.color = color === 'green' ? '#1e7e34' : color === 'red' ? '#d32f2f' : '#1a73e8';
+    setTimeout(() => { el.textContent = ''; }, 3000);
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,275 @@
+{% extends "layout.html" %}
+{% block title %}管理后台 - 世界杯竞猜{% endblock %}
+{% block content %}
+
+<h2>🔧 管理后台</h2>
+
+<!-- Add Match -->
+<div class="admin-section">
+    <h3>➕ 添加比赛</h3>
+    <form id="add-match-form">
+        <div class="grid">
+            <div>
+                <label for="round">轮次</label>
+                <select id="round" required>
+                    <option value="R32">R32 - 十六强赛</option>
+                    <option value="R16">R16 - 八分之一决赛</option>
+                    <option value="QF">QF - 四分之一决赛</option>
+                    <option value="SF">SF - 半决赛</option>
+                    <option value="3RD">3RD - 三四名决赛</option>
+                    <option value="FINAL">FINAL - 决赛</option>
+                </select>
+            </div>
+            <div>
+                <label for="match-order">场序号</label>
+                <input type="number" id="match-order" min="1" max="32" required>
+            </div>
+            <div>
+                <label for="team-a">主队</label>
+                <input type="text" id="team-a" placeholder="例如：法国" required>
+            </div>
+            <div>
+                <label for="team-b">客队</label>
+                <input type="text" id="team-b" placeholder="例如：巴西" required>
+            </div>
+            <div>
+                <label for="match-time">比赛时间（北京时间）</label>
+                <input type="datetime-local" id="match-time" required>
+            </div>
+        </div>
+        <button type="submit">添加比赛</button>
+        <p id="add-match-msg" style="margin-top:0.5rem;"></p>
+    </form>
+</div>
+
+<!-- Enter Match Result -->
+<div class="admin-section">
+    <h3>📝 录入比赛结果 & 自动算分</h3>
+    {% set open_or_upcoming = matches | selectattr('status', 'in', ['open', 'upcoming']) | list %}
+    {% if open_or_upcoming %}
+    <form id="result-form">
+        <div class="grid">
+            <div>
+                <label for="result-match">选择比赛</label>
+                <select id="result-match" required>
+                    <option value="">-- 选择 --</option>
+                    {% for m in open_or_upcoming %}
+                    <option value="{{ m.id }}">{{ m.round_name }} | {{ m.team_a }} vs {{ m.team_b }} ({{ m.match_time.strftime('%m/%d %H:%M') }}) [{{ m.status }}]</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="result-a">{{ '{{主队比分}}' }}</label>
+                <input type="number" id="result-a" min="0" max="99" required>
+            </div>
+            <div>
+                <label for="result-b">{{ '{{客队比分}}' }}</label>
+                <input type="number" id="result-b" min="0" max="99" required>
+            </div>
+        </div>
+        <button type="submit" style="background:var(--primary);">✅ 录入结果并自动算分</button>
+        <p id="result-msg" style="margin-top:0.5rem;"></p>
+    </form>
+    {% else %}
+    <p style="color:#888;">所有比赛已录入结果</p>
+    {% endif %}
+</div>
+
+<!-- Manage Matches -->
+<div class="admin-section">
+    <h3>📋 管理所有比赛</h3>
+    {% if matches %}
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>轮次</th>
+                    <th>对阵</th>
+                    <th>时间</th>
+                    <th>比分</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in matches %}
+                <tr>
+                    <td>{{ m.match_order }}</td>
+                    <td><span class="round-badge {% if m.is_final %}final{% endif %}">{{ m.round_name }}</span></td>
+                    <td>{{ m.team_a }} vs {{ m.team_b }}</td>
+                    <td>{{ m.match_time.strftime('%m/%d %H:%M') }}</td>
+                    <td>{% if m.score_a is not none %}{{ m.score_a }}-{{ m.score_b }}{% else %}-{% endif %}</td>
+                    <td>
+                        <span class="status-dot status-{{ m.status }}"></span>
+                        {{ m.status }}
+                    </td>
+                    <td>
+                        <button onclick="toggleMatch({{ m.id }})" style="font-size:0.8rem;padding:0.2rem 0.5rem;">
+                            {% if m.status == 'open' %}关闭预测{% elif m.status == 'upcoming' %}开放预测{% else %}重新开放{% endif %}
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:#888;">还没有添加比赛</p>
+    {% endif %}
+</div>
+
+<!-- Score Project 1 & 2 -->
+<div class="admin-section">
+    <h3>🏆 结算项目一（冠军/金靴/金球）</h3>
+    <form id="score-p1-form">
+        <div class="grid">
+            <div>
+                <label for="real-champion">冠军</label>
+                <input type="text" id="real-champion" placeholder="例如：法国" required>
+            </div>
+            <div>
+                <label for="real-boot">金靴</label>
+                <input type="text" id="real-boot" placeholder="例如：姆巴佩" required>
+            </div>
+            <div>
+                <label for="real-ball">金球</label>
+                <input type="text" id="real-ball" placeholder="例如：维尼修斯" required>
+            </div>
+        </div>
+        <button type="submit">结算项目一</button>
+        <p id="score-p1-msg" style="margin-top:0.5rem;"></p>
+    </form>
+
+    <h3 style="margin-top:2rem;">🏟️ 结算项目二（四强）</h3>
+    <form id="score-p2-form">
+        <div class="grid">
+            <div>
+                <label for="sf-1">四强 1</label>
+                <input type="text" id="sf-1" required>
+            </div>
+            <div>
+                <label for="sf-2">四强 2</label>
+                <input type="text" id="sf-2" required>
+            </div>
+            <div>
+                <label for="sf-3">四强 3</label>
+                <input type="text" id="sf-3" required>
+            </div>
+            <div>
+                <label for="sf-4">四强 4</label>
+                <input type="text" id="sf-4" required>
+            </div>
+        </div>
+        <button type="submit">结算项目二</button>
+        <p id="score-p2-msg" style="margin-top:0.5rem;"></p>
+    </form>
+</div>
+
+<!-- Registered Users -->
+<div class="admin-section">
+    <h3>👥 注册群友 ({{ users|length }}人)</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+        {% for u in users %}
+        <span style="background:#f0f0f0;padding:0.25rem 0.75rem;border-radius:16px;font-size:0.9rem;">
+            {{ u.nickname }}
+            <span style="color:#888;font-size:0.75rem;">({{ u.get_total_score() }}分)</span>
+        </span>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+// Add match
+document.getElementById('add-match-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        round: document.getElementById('round').value,
+        match_order: parseInt(document.getElementById('match-order').value),
+        team_a: document.getElementById('team-a').value.trim(),
+        team_b: document.getElementById('team-b').value.trim(),
+        match_time: document.getElementById('match-time').value,
+    };
+    const res = await fetch('/api/admin/match', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    showMsg('add-match-msg', r.msg, r.ok);
+    if (r.ok) setTimeout(() => location.reload(), 800);
+});
+
+// Enter result
+document.getElementById('result-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const matchId = parseInt(document.getElementById('result-match').value);
+    const scoreA = parseInt(document.getElementById('result-a').value);
+    const scoreB = parseInt(document.getElementById('result-b').value);
+    if (!matchId || isNaN(scoreA) || isNaN(scoreB)) {
+        showMsg('result-msg', '请完整填写', false);
+        return;
+    }
+    const res = await fetch('/api/admin/result', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({match_id: matchId, score_a: scoreA, score_b: scoreB})
+    });
+    const r = await res.json();
+    showMsg('result-msg', r.msg, r.ok);
+    if (r.ok) setTimeout(() => location.reload(), 1000);
+});
+
+// Toggle match status
+async function toggleMatch(matchId) {
+    const res = await fetch(`/api/admin/toggle-match/${matchId}`, {method: 'POST'});
+    const r = await res.json();
+    if (r.ok) location.reload();
+}
+
+// Score P1
+document.getElementById('score-p1-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        champion: document.getElementById('real-champion').value.trim(),
+        golden_boot: document.getElementById('real-boot').value.trim(),
+        golden_ball: document.getElementById('real-ball').value.trim(),
+    };
+    const res = await fetch('/api/admin/score-p1', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    showMsg('score-p1-msg', r.msg, r.ok);
+});
+
+// Score P2
+document.getElementById('score-p2-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        semifinal_teams: [
+            document.getElementById('sf-1').value.trim(),
+            document.getElementById('sf-2').value.trim(),
+            document.getElementById('sf-3').value.trim(),
+            document.getElementById('sf-4').value.trim(),
+        ]
+    };
+    const res = await fetch('/api/admin/score-p2', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    showMsg('score-p2-msg', r.msg, r.ok);
+});
+
+function showMsg(id, msg, ok) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.color = ok ? '#1e7e34' : '#d32f2f';
+    setTimeout(() => { el.textContent = ''; }, 5000);
+}
+</script>
+
+{% endblock %}

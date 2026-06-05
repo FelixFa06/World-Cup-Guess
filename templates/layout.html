@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}世界杯竞猜{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><strong>⚽ 世界杯竞猜</strong></li>
+            <li><a href="{{ url_for('index') }}">首页</a></li>
+            <li><a href="{{ url_for('rules') }}">规则</a></li>
+            {% if current_user.is_authenticated %}
+                {% if not current_user.is_admin %}
+                <li><a href="{{ url_for('predict_page') }}">竞猜</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('matches_page') }}">比赛</a></li>
+                <li><a href="{{ url_for('rankings') }}">排名</a></li>
+                {% if current_user.is_admin %}
+                <li><a href="{{ url_for('admin') }}">管理</a></li>
+                {% endif %}
+                <li><span style="color:#fff;opacity:0.7;">{{ current_user.nickname }}</span></li>
+                <li><a href="#" onclick="logout();return false;">退出</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login_page') }}">登录</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="flash-msg flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>原神群 · 2026世界杯竞猜 · 收米界最长的河在等你 🌾</p>
+    </footer>
+
+    <script>
+    function logout() {
+        fetch('/api/logout', {method: 'POST'}).then(() => {
+            window.location.href = '/';
+        });
+    }
+
+    // Auto-dismiss flash messages
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            document.querySelectorAll('.flash-msg').forEach(el => {
+                el.style.transition = 'opacity 0.5s';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 500);
+            });
+        }, 3000);
+    });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
