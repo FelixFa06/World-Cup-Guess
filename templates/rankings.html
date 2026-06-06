@@ -13,8 +13,9 @@
                 <th>群友</th>
                 <th>总分</th>
                 <th>🏆 项目一</th>
-                <th>🏟️ 项目二</th>
-                <th>⚽ 项目三</th>
+                <th>📋 项目二</th>
+                <th>🏟️ 项目三</th>
+                <th>⚽ 项目四</th>
                 <th>🌾 收米之星</th>
             </tr>
         </thead>
@@ -40,6 +41,7 @@
                 <td>{{ u.p1 }}</td>
                 <td>{{ u.p2 }}</td>
                 <td>{{ u.p3 }}</td>
+                <td>{{ u.p4 }}</td>
                 <td>{{ u.star_count }}</td>
             </tr>
             {% endfor %}
@@ -55,14 +57,19 @@
         <p>{{ p1_best.nickname }}: <strong>{{ p1_best.p1 }}分</strong></p>
     </div>
     <div class="card">
-        <div class="card-header">🏟️ 项目二最高</div>
+        <div class="card-header">📋 项目二最高</div>
         {% set p2_best = leaderboard | sort(attribute='p2', reverse=true) | first %}
         <p>{{ p2_best.nickname }}: <strong>{{ p2_best.p2 }}分</strong></p>
     </div>
     <div class="card">
-        <div class="card-header">⚽ 项目三最高</div>
+        <div class="card-header">🏟️ 项目三最高</div>
         {% set p3_best = leaderboard | sort(attribute='p3', reverse=true) | first %}
         <p>{{ p3_best.nickname }}: <strong>{{ p3_best.p3 }}分</strong></p>
+    </div>
+    <div class="card">
+        <div class="card-header">⚽ 项目四最高</div>
+        {% set p4_best = leaderboard | sort(attribute='p4', reverse=true) | first %}
+        <p>{{ p4_best.nickname }}: <strong>{{ p4_best.p4 }}分</strong></p>
     </div>
 </div>
 

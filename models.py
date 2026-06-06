@@ -17,7 +17,8 @@ class User(UserMixin, db.Model):
 
     # Relationships
     p1_pick = db.relationship("Project1Pick", backref="user", uselist=False)
-    p2_pick = db.relationship("Project2Pick", backref="user", uselist=False)
+    p3_pick = db.relationship("Project2Pick", backref="user", uselist=False)  # display: 项目三 (四强)
+    group_stage_picks = db.relationship("GroupStagePick", backref="user", lazy="dynamic")
     match_predictions = db.relationship("MatchPrediction", backref="user", lazy="dynamic")
     daily_stars = db.relationship("DailyStar", backref="user", lazy="dynamic")
 
@@ -28,18 +29,25 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def get_total_score(self):
-        p1 = self.p1_pick.score if self.p1_pick else 0
-        p2 = self.p2_pick.score if self.p2_pick else 0
-        p3 = sum(mp.points or 0 for mp in self.match_predictions)
-        return p1 + p2 + p3
+        p1 = self.get_p1_score()
+        p2 = self.get_p2_score()
+        p3 = self.get_p3_score()
+        p4 = self.get_p4_score()
+        return p1 + p2 + p3 + p4
 
     def get_p1_score(self):
         return self.p1_pick.score if self.p1_pick else 0
 
     def get_p2_score(self):
-        return self.p2_pick.score if self.p2_pick else 0
+        """Project 2: Group stage ranking score"""
+        return sum(gp.score or 0 for gp in self.group_stage_picks)
 
     def get_p3_score(self):
+        """Project 3: Semifinal prediction score (四强)"""
+        return self.p3_pick.score if self.p3_pick else 0
+
+    def get_p4_score(self):
+        """Project 4: Match prediction score"""
         return sum(mp.points or 0 for mp in self.match_predictions)
 
     def get_daily_star_count(self):
@@ -114,7 +122,30 @@ class Project1Pick(db.Model):
     )
 
 
+class GroupStagePick(db.Model):
+    """Project 2: Group stage ranking prediction — predict 1st & 2nd for each group."""
+    __tablename__ = "group_stage_picks"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    group_name = db.Column(db.String(2), nullable=False)  # A-L
+    first_place = db.Column(db.String(100), nullable=False)
+    second_place = db.Column(db.String(100), nullable=False)
+    score = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "group_name", name="uq_user_group"),
+    )
+
+
 class Project2Pick(db.Model):
+    """Project 3 (display): Semifinal prediction — pick 1 team from each of 4 zones."""
     __tablename__ = "project2_picks"
 
     id = db.Column(db.Integer, primary_key=True)

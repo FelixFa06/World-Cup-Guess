@@ -16,9 +16,9 @@ from flask_login import (
 from werkzeug.security import check_password_hash
 
 from config import Config
-from models import db, User, Match, Project1Pick, Project2Pick, MatchPrediction, DailyStar
+from models import db, User, Match, Project1Pick, Project2Pick, GroupStagePick, MatchPrediction, DailyStar
 from scoring import (
-    score_match_prediction, score_project1, score_project2,
+    score_match_prediction, score_project1, score_project2, score_group_stage,
     calculate_daily_stars, get_leaderboard,
 )
 
@@ -110,12 +110,19 @@ def create_app():
         p1_pick = Project1Pick.query.filter_by(user_id=current_user.id).first()
         p1_deadline_passed = _is_p1_deadline_passed()
 
-        # Project 2 status
-        p2_pick = Project2Pick.query.filter_by(user_id=current_user.id).first()
-        p2_open = _is_p2_open()
+        # Project 2 status (Group stage ranking - NEW)
+        p2_group_picks = GroupStagePick.query.filter_by(
+            user_id=current_user.id
+        ).order_by(GroupStagePick.group_name).all()
+        p2_group_picks_map = {gp.group_name: gp for gp in p2_group_picks}
         p2_deadline_passed = _is_p2_deadline_passed()
 
-        # Open matches for Project 3
+        # Project 3 status (Semifinal - was P2)
+        p3_pick = Project2Pick.query.filter_by(user_id=current_user.id).first()
+        p3_open = _is_p3_open()
+        p3_deadline_passed = _is_p3_deadline_passed()
+
+        # Project 4: Match predictions (was P3)
         open_matches = Match.query.filter_by(status="open").order_by(
             Match.match_time.asc()
         ).all()
@@ -133,9 +140,11 @@ def create_app():
             "predict.html",
             p1_pick=p1_pick,
             p1_deadline_passed=p1_deadline_passed,
-            p2_pick=p2_pick,
-            p2_open=p2_open,
+            p2_group_picks_map=p2_group_picks_map,
             p2_deadline_passed=p2_deadline_passed,
+            p3_pick=p3_pick,
+            p3_open=p3_open,
+            p3_deadline_passed=p3_deadline_passed,
             open_matches=open_matches,
             user_predictions=user_predictions,
         )
@@ -294,14 +303,68 @@ def create_app():
     @app.route("/api/predict/p2", methods=["POST"])
     @login_required
     def api_predict_p2():
+        """Project 2: Group stage ranking prediction"""
         if current_user.is_admin:
             return jsonify({"ok": False, "msg": "管理员不参与竞猜"}), 400
 
-        if not _is_p2_open():
-            return jsonify({"ok": False, "msg": "项目二暂未开放"}), 400
-
         if _is_p2_deadline_passed():
-            return jsonify({"ok": False, "msg": "项目二已截止，不能提交"}), 400
+            return jsonify({"ok": False, "msg": "项目二已截止（小组赛已开始），不能提交"}), 400
+
+        data = request.get_json()
+        groups = data.get("groups", [])  # [{group_name, first_place, second_place}, ...]
+
+        if not groups or len(groups) != 12:
+            return jsonify({"ok": False, "msg": "请填写全部12个小组的预测"}), 400
+
+        # Validate all groups A-L are present
+        group_names = {g.get("group_name", "").strip().upper() for g in groups}
+        expected = set("ABCDEFGHIJKL")
+        if group_names != expected:
+            return jsonify({"ok": False, "msg": "小组名称必须为A-L共12个"}), 400
+
+        for g in groups:
+            group_name = g.get("group_name", "").strip().upper()
+            first = g.get("first_place", "").strip()
+            second = g.get("second_place", "").strip()
+
+            if not first or not second:
+                return jsonify({"ok": False, "msg": f"小组{group_name}的第一和第二名不能为空"}), 400
+
+            if first == second:
+                return jsonify({"ok": False, "msg": f"小组{group_name}的第一和第二名不能相同"}), 400
+
+            # Upsert this group's pick
+            pick = GroupStagePick.query.filter_by(
+                user_id=current_user.id, group_name=group_name
+            ).first()
+            if pick:
+                pick.first_place = first
+                pick.second_place = second
+                pick.updated_at = utcnow()
+            else:
+                pick = GroupStagePick(
+                    user_id=current_user.id,
+                    group_name=group_name,
+                    first_place=first,
+                    second_place=second,
+                )
+                db.session.add(pick)
+
+        db.session.commit()
+        return jsonify({"ok": True, "msg": "项目二（小组赛排名）已保存"})
+
+    @app.route("/api/predict/p3", methods=["POST"])
+    @login_required
+    def api_predict_p3():
+        """Project 3: Semifinal prediction (四强, was P2)"""
+        if current_user.is_admin:
+            return jsonify({"ok": False, "msg": "管理员不参与竞猜"}), 400
+
+        if not _is_p3_open():
+            return jsonify({"ok": False, "msg": "项目三暂未开放"}), 400
+
+        if _is_p3_deadline_passed():
+            return jsonify({"ok": False, "msg": "项目三已截止，不能提交"}), 400
 
         data = request.get_json()
         zone_a = data.get("zone_a", "").strip()
@@ -333,7 +396,7 @@ def create_app():
             db.session.add(pick)
 
         db.session.commit()
-        return jsonify({"ok": True, "msg": "项目二预测已保存"})
+        return jsonify({"ok": True, "msg": "项目三（四强预测）已保存"})
 
     @app.route("/api/predict/match/<int:match_id>", methods=["POST"])
     @login_required
@@ -510,7 +573,41 @@ def create_app():
     @app.route("/api/admin/score-p2", methods=["POST"])
     @login_required
     def api_admin_score_p2():
-        """Score all project 2 picks"""
+        """Score all project 2 picks (Group stage ranking)"""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        data = request.get_json()
+        groups = data.get("groups", [])  # [{group_name, first_place, second_place}, ...]
+
+        if not groups or len(groups) != 12:
+            return jsonify({"ok": False, "msg": "请提供全部12个小组的结果"}), 400
+
+        # Build lookup: group_name → {first, second}
+        results = {}
+        for g in groups:
+            gn = g.get("group_name", "").strip().upper()
+            first = g.get("first_place", "").strip()
+            second = g.get("second_place", "").strip()
+            if not gn or not first or not second:
+                return jsonify({"ok": False, "msg": "每个小组需提供组名、第一和第二名"}), 400
+            results[gn] = (first, second)
+
+        picks = GroupStagePick.query.all()
+        count = 0
+        for pick in picks:
+            actual = results.get(pick.group_name)
+            if actual:
+                pick.score = score_group_stage(pick, actual[0], actual[1])
+                count += 1
+
+        db.session.commit()
+        return jsonify({"ok": True, "msg": f"项目二（小组赛排名）已结算，{count} 条预测已更新"})
+
+    @app.route("/api/admin/score-p3", methods=["POST"])
+    @login_required
+    def api_admin_score_p3():
+        """Score all project 3 picks (Semifinal prediction, was P2)"""
         if not current_user.is_admin:
             return jsonify({"ok": False, "msg": "无权操作"}), 403
 
@@ -527,7 +624,7 @@ def create_app():
             count += 1
 
         db.session.commit()
-        return jsonify({"ok": True, "msg": f"项目二已结算，{count} 位群友的分数已更新"})
+        return jsonify({"ok": True, "msg": f"项目三（四强预测）已结算，{count} 位群友的分数已更新"})
 
     @app.route("/api/match/<int:match_id>/predictions")
     def api_match_predictions(match_id):
@@ -560,13 +657,19 @@ def create_app():
             return utcnow() >= first_ko.match_time.replace(tzinfo=None)
         return False
 
-    def _is_p2_open():
-        """P2 opens when R32 teams are set (first R32 match exists)"""
+    def _is_p2_deadline_passed():
+        """P2 (group stage) deadline: group stage start date (2026-06-11)"""
+        from config import Config
+        gs_start = datetime.strptime(Config.GROUP_STAGE_START, "%Y-%m-%d")
+        return utcnow() >= gs_start
+
+    def _is_p3_open():
+        """P3 (semifinal) opens when R32 teams are set (first R32 match exists)"""
         r32_match = Match.query.filter_by(round_name="R32").first()
         return r32_match is not None
 
-    def _is_p2_deadline_passed():
-        """P2 deadline: first R32 match kickoff"""
+    def _is_p3_deadline_passed():
+        """P3 (semifinal) deadline: first R32 match kickoff"""
         first_r32 = Match.query.filter_by(round_name="R32").order_by(
             Match.match_time.asc()
         ).first()

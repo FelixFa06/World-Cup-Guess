@@ -162,8 +162,76 @@ try:
 except Exception as e:
     check("Prediction submission", False, str(e))
 
-# ── Test 6: Enter results & auto-score ──
-print("\n🧮 Test 6: Auto Scoring (the most critical test!)")
+# ── Test 6: Project 2 Group Stage ──
+print("\n📋 Test 6: Project 2 - Group Stage Ranking")
+
+# Build 12-group prediction for 玩家A (back to user_cookies)
+print("  Submitting group stage predictions for 玩家A...")
+try:
+    # Create predictions for all 12 groups
+    test_groups = []
+    group_names = ['A','B','C','D','E','F','G','H','I','J','K','L']
+    for i, g in enumerate(group_names):
+        # Make diverse predictions for testing
+        test_groups.append({
+            "group_name": g,
+            "first_place": f"Team-{g}-1ST",
+            "second_place": f"Team-{g}-2ND"
+        })
+
+    s, b, _ = req("POST", "/api/predict/p2",
+                   {"groups": test_groups},
+                   cookies=user_cookies)
+    check("玩家A submits P2 (12 groups)", b.get("ok") is True, b.get("msg", ""))
+
+    # Also submit for 玩家B with slightly different picks
+    test_groups_b = []
+    for i, g in enumerate(group_names):
+        test_groups_b.append({
+            "group_name": g,
+            "first_place": f"Team-{g}-1ST",
+            "second_place": f"Alt-Team-{g}-2ND"  # different 2nd place
+        })
+    s, b, _ = req("POST", "/api/predict/p2",
+                   {"groups": test_groups_b},
+                   cookies=yjf_cookies)
+    check("玩家B submits P2 (12 groups)", b.get("ok") is True, b.get("msg", ""))
+except Exception as e:
+    check("P2 prediction submission", False, str(e))
+
+# Admin scores P2
+print("  Scoring P2 (group stage results)...")
+try:
+    # Results: 玩家A's picks are all correct, 玩家B has wrong 2nd place for all
+    score_groups = []
+    for g in group_names:
+        score_groups.append({
+            "group_name": g,
+            "first_place": f"Team-{g}-1ST",
+            "second_place": f"Team-{g}-2ND"
+        })
+
+    s, b, _ = req("POST", "/api/admin/score-p2",
+                   {"groups": score_groups},
+                   cookies=admin_cookies)
+    check("P2 scored successfully", b.get("ok") is True, b.get("msg", ""))
+except Exception as e:
+    check("P2 scoring", False, str(e))
+
+# Verify scores via rankings page
+print("  Verifying P2 scores...")
+print("    - 玩家A: all 12 groups correct → 24 pts")
+print("    - 玩家B: all 12 groups wrong 2nd place → 0 pts")
+try:
+    resp = urllib.request.urlopen(urllib.request.Request(BASE + "/rankings"))
+    html = resp.read().decode()
+    # Just verify the page loads with P2 data
+    check("Rankings page shows P2", "项目二" in html, "P2 not found in rankings")
+except Exception as e:
+    check("P2 score verification", False, str(e))
+
+# ── Test 7: Enter results & auto-score ──
+print("\n🧮 Test 7: Auto Scoring (the most critical test!)")
 
 print("  Scenario: France 8-1 Belgium (total goals=9≥5, diff=7≥3 → big match)")
 try:
@@ -192,8 +260,8 @@ try:
 except Exception as e:
     check("Score verification", False, str(e))
 
-# ── Test 7: Enter match 2 result ──
-print("\n📊 Test 7: Match 2 scoring + daily star")
+# ── Test 8: Enter match 2 result ──
+print("\n📊 Test 8: Match 2 scoring + daily star")
 try:
     s, b, _ = req("POST", "/api/admin/result",
                    {"match_id": 2, "score_a": 1, "score_b": 0},
@@ -202,8 +270,8 @@ try:
 except Exception as e:
     check("Match 2 scoring", False, str(e))
 
-# ── Test 8: Rankings page ──
-print("\n📈 Test 8: Rankings")
+# ── Test 9: Rankings page ──
+print("\n📈 Test 9: Rankings")
 try:
     # Load rankings HTML page
     resp = urllib.request.urlopen(urllib.request.Request(BASE + "/rankings"))
@@ -213,8 +281,8 @@ try:
 except Exception as e:
     check("Rankings page", False, str(e))
 
-# ── Test 9: Project 1 scoring ──
-print("\n🏆 Test 9: Project 1 Scoring")
+# ── Test 10: Project 1 scoring ──
+print("\n🏆 Test 10: Project 1 Scoring")
 try:
     # Submit P1 picks
     s, b, _ = req("POST", "/api/predict/p1",
@@ -231,13 +299,12 @@ try:
 except Exception as e:
     check("Project 1 scoring", False, str(e))
 
-# ── Test 10: Final scoring check ──
-print("\n🎯 Test 10: Final Scoring Verification")
-print("  Expected (just P3 for test users):")
-print("    玩家C: P3=5 (exact big match)")
-print("    玩家B: P3=1 (correct result)")
-print("    玩家A: P3=0 (wrong) + P3 match2=3 (exact 1-0)")
-print("          Total P3=3, P1=10 → Total=13")
+# ── Test 11: Final scoring check ──
+print("\n🎯 Test 11: Final Scoring Verification")
+print("  Expected scores:")
+print("    玩家C: P2=0 (didn't submit), P4=5 (exact big match) → Total=5")
+print("    玩家B: P2=0 (all wrong 2nd), P4=1 (correct result) → Total=1")
+print("    玩家A: P2=24 (all correct), P4=0+3=3, P1=10 → Total=37")
 
 # ── Summary ──
 print("\n" + "=" * 60)

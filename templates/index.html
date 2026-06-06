@@ -26,6 +26,10 @@
             <div style="font-size:0.85rem;color:#888;">项目三</div>
         </div>
         <div style="flex:1;min-width:100px;text-align:center;">
+            <div style="font-size:1.5rem;">{{ current_user.get_p4_score() }}</div>
+            <div style="font-size:0.85rem;color:#888;">项目四</div>
+        </div>
+        <div style="flex:1;min-width:100px;text-align:center;">
             <div style="font-size:1.5rem;">🌾 ×{{ current_user.get_daily_star_count() }}</div>
             <div style="font-size:0.85rem;color:#888;">收米之星</div>
         </div>
@@ -105,6 +109,7 @@
                     <th>P1</th>
                     <th>P2</th>
                     <th>P3</th>
+                    <th>P4</th>
                     <th>收米</th>
                 </tr>
             </thead>
@@ -122,6 +127,7 @@
                     <td>{{ u.p1 }}</td>
                     <td>{{ u.p2 }}</td>
                     <td>{{ u.p3 }}</td>
+                    <td>{{ u.p4 }}</td>
                     <td>{{ u.star_count }}</td>
                 </tr>
                 {% endfor %}
