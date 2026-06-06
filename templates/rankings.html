@@ -1,0 +1,98 @@
+{% extends "layout.html" %}
+{% block title %}积分排名 - 世界杯竞猜{% endblock %}
+{% block content %}
+
+<h2>📊 积分排名</h2>
+
+{% if leaderboard %}
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>排名</th>
+                <th>群友</th>
+                <th>总分</th>
+                <th>🏆 项目一</th>
+                <th>🏟️ 项目二</th>
+                <th>⚽ 项目三</th>
+                <th>🌾 收米之星</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in leaderboard %}
+            <tr class="{% if u.rank == 1 %}rank-1{% elif u.rank == 2 %}rank-2{% elif u.rank == 3 %}rank-3{% endif %}">
+                <td>
+                    <strong>
+                    {% if u.rank == 1 %}🥇
+                    {% elif u.rank == 2 %}🥈
+                    {% elif u.rank == 3 %}🥉
+                    {% else %}{{ u.rank }}
+                    {% endif %}
+                    </strong>
+                </td>
+                <td>
+                    <strong>{{ u.nickname }}</strong>
+                    {% if u.star_count > 0 %}
+                    <span class="star-badge">🌾×{{ u.star_count }}</span>
+                    {% endif %}
+                </td>
+                <td><strong style="font-size:1.2rem;">{{ u.total }}</strong></td>
+                <td>{{ u.p1 }}</td>
+                <td>{{ u.p2 }}</td>
+                <td>{{ u.p3 }}</td>
+                <td>{{ u.star_count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Gap analysis: highlight top scorers per project -->
+<div class="grid" style="margin-top:2rem;">
+    <div class="card">
+        <div class="card-header">🏆 项目一最高</div>
+        {% set p1_best = leaderboard | sort(attribute='p1', reverse=true) | first %}
+        <p>{{ p1_best.nickname }}: <strong>{{ p1_best.p1 }}分</strong></p>
+    </div>
+    <div class="card">
+        <div class="card-header">🏟️ 项目二最高</div>
+        {% set p2_best = leaderboard | sort(attribute='p2', reverse=true) | first %}
+        <p>{{ p2_best.nickname }}: <strong>{{ p2_best.p2 }}分</strong></p>
+    </div>
+    <div class="card">
+        <div class="card-header">⚽ 项目三最高</div>
+        {% set p3_best = leaderboard | sort(attribute='p3', reverse=true) | first %}
+        <p>{{ p3_best.nickname }}: <strong>{{ p3_best.p3 }}分</strong></p>
+    </div>
+</div>
+
+<!-- Daily stars history -->
+{% if star_map %}
+<div class="card" style="margin-top:2rem;">
+    <div class="card-header">🌾 收米之星历史</div>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>收米之星</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match_date, names in star_map.items() %}
+                <tr>
+                    <td>{{ match_date }}</td>
+                    <td>🌾 {{ names | join(' · ') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<p style="text-align:center;color:#888;">还没有排名数据，等比赛开始吧！⚽</p>
+{% endif %}
+
+{% endblock %}

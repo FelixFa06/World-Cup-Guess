@@ -1,0 +1,72 @@
+{% extends "layout.html" %}
+{% block title %}比赛中心 - 世界杯竞猜{% endblock %}
+{% block content %}
+
+<h2>📅 比赛中心</h2>
+
+{% set rounds = ['R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'] %}
+{% set round_names = {'R32': '十六强赛 (32进16)', 'R16': '八分之一决赛 (16进8)', 'QF': '四分之一决赛', 'SF': '半决赛', '3RD': '三四名决赛', 'FINAL': '决赛'} %}
+
+{% for round_name in rounds %}
+{% set round_matches = matches | selectattr('round_name', 'eq', round_name) | list %}
+{% if round_matches %}
+<div class="card">
+    <div class="card-header">{{ round_names.get(round_name, round_name) }}</div>
+    {% for match in round_matches %}
+    <div class="match-card" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <span class="status-dot status-{{ match.status }}"></span>
+                <span class="round-badge {% if match.is_final %}final{% endif %}">{{ match.round_name }}</span>
+            </div>
+            <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
+            <div>
+                {% if match.status == 'closed' %}
+                <span class="match-score">{{ match.score_a }} - {{ match.score_b }}</span>
+                {% elif match.status == 'open' %}
+                <span style="color:var(--primary);">🔓 预测中</span>
+                {% else %}
+                <span style="color:#888;">🔒 待开放</span>
+                {% endif %}
+            </div>
+            <span class="match-info">{{ match.match_time.strftime('%m/%d %H:%M') }}</span>
+        </div>
+
+        {% if current_user.is_authenticated and not current_user.is_admin %}
+        {% set my_pred = user_preds.get(match.id) %}
+        {% if my_pred %}
+        <div style="font-size:0.85rem;color:#888;margin-top:0.25rem;">
+            我的预测：{{ my_pred.pred_score_a }}-{{ my_pred.pred_score_b }}
+            {% if match.status == 'closed' %}
+            → 得分：<strong>{{ my_pred.points }}</strong>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- Public predictions (after match closed) -->
+        {% if match.status == 'closed' and match_predictions_map.get(match.id) %}
+        <details style="margin-top:0.5rem;">
+            <summary style="font-size:0.85rem;color:#888;cursor:pointer;">查看所有群友预测 ({{ match_predictions_map[match.id]|length }}人)</summary>
+            <div class="prediction-grid" style="margin-top:0.5rem;">
+                {% for p in match_predictions_map[match.id] %}
+                <div class="prediction-item {% if p.points >= 3 %}exact{% elif p.points >= 1 %}result-only{% else %}miss{% endif %}">
+                    <span>{{ p.nickname }}</span>
+                    <span>{{ p.pred_a }}-{{ p.pred_b }}</span>
+                    <span><strong>{{ p.points }}分</strong></span>
+                </div>
+                {% endfor %}
+            </div>
+        </details>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endfor %}
+
+{% if not matches %}
+<p style="text-align:center;color:#888;">暂无比赛数据，等管理员添加赛程 📅</p>
+{% endif %}
+
+{% endblock %}

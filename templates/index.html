@@ -1,0 +1,142 @@
+{% extends "layout.html" %}
+{% block title %}世界杯竞猜 - 首页{% endblock %}
+{% block content %}
+
+<h2>🏆 2026 世界杯竞猜</h2>
+<p style="color:#888;">小组赛 6月11日开打，淘汰赛竞猜即将开启！</p>
+
+{% if current_user.is_authenticated and not current_user.is_admin %}
+<div class="card">
+    <div class="card-header">📊 我的战绩</div>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:100px;text-align:center;">
+            <div style="font-size:2rem;font-weight:bold;color:var(--primary);">{{ current_user.get_total_score() }}</div>
+            <div style="font-size:0.85rem;color:#888;">总分</div>
+        </div>
+        <div style="flex:1;min-width:100px;text-align:center;">
+            <div style="font-size:1.5rem;">{{ current_user.get_p1_score() }}</div>
+            <div style="font-size:0.85rem;color:#888;">项目一</div>
+        </div>
+        <div style="flex:1;min-width:100px;text-align:center;">
+            <div style="font-size:1.5rem;">{{ current_user.get_p2_score() }}</div>
+            <div style="font-size:0.85rem;color:#888;">项目二</div>
+        </div>
+        <div style="flex:1;min-width:100px;text-align:center;">
+            <div style="font-size:1.5rem;">{{ current_user.get_p3_score() }}</div>
+            <div style="font-size:0.85rem;color:#888;">项目三</div>
+        </div>
+        <div style="flex:1;min-width:100px;text-align:center;">
+            <div style="font-size:1.5rem;">🌾 ×{{ current_user.get_daily_star_count() }}</div>
+            <div style="font-size:0.85rem;color:#888;">收米之星</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Star of the day -->
+{% if latest_stars %}
+<div class="star-banner">
+    <div class="title">📅 最新收米之星 ({{ latest_stars[0].match_date }})</div>
+    <div class="name">
+        🌾
+        {% for star in latest_stars %}
+        {{ star.user.nickname }}{% if not loop.last %} · {% endif %}
+        {% endfor %}
+        🌾
+    </div>
+    <div style="font-size:0.85rem;color:#856404;">当日得分: {{ latest_stars[0].points_that_day }}分</div>
+</div>
+{% endif %}
+
+<!-- "收米界最长的河" leader -->
+{% if star_leader %}
+<div class="card" style="text-align:center;">
+    <div style="font-size:0.9rem;color:#888;">🏆 收米界最长的河 · 当前领跑</div>
+    <div style="font-size:1.2rem;font-weight:bold;">
+        {% for u in star_leader %}
+        {{ u.nickname }} (🌾×{{ u.star_count }}){% if not loop.last %} · {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Upcoming matches -->
+<div class="card">
+    <div class="card-header">🔜 即将开始的比赛</div>
+    {% if upcoming %}
+    {% for match in upcoming %}
+    <div class="match-card">
+        <span class="round-badge {% if match.is_final %}final{% endif %}">{{ match.round_name }}</span>
+        <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
+        <span class="match-info">{{ match.match_time.strftime('%m/%d %H:%M') }}</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:#888;">暂无比赛数据，等管理员添加赛程</p>
+    {% endif %}
+</div>
+
+<!-- Recent results -->
+{% if recent %}
+<div class="card">
+    <div class="card-header">📋 最近赛果</div>
+    {% for match in recent %}
+    <div class="match-card">
+        <span class="round-badge {% if match.is_final %}final{% endif %}">{{ match.round_name }}</span>
+        <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
+        <span class="match-score">{{ match.score_a }} - {{ match.score_b }}</span>
+        <span class="match-info">{{ match.match_time.strftime('%m/%d') }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Top 5 leaderboard -->
+{% if leaderboard %}
+<div class="card">
+    <div class="card-header">🏅 排名前五</div>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>群友</th>
+                    <th>总分</th>
+                    <th>P1</th>
+                    <th>P2</th>
+                    <th>P3</th>
+                    <th>收米</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in leaderboard[:5] %}
+                <tr>
+                    <td>{{ u.rank }}</td>
+                    <td>
+                        {{ u.nickname }}
+                        {% if u.star_count > 0 %}
+                        <span class="star-badge">🌾×{{ u.star_count }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ u.total }}</strong></td>
+                    <td>{{ u.p1 }}</td>
+                    <td>{{ u.p2 }}</td>
+                    <td>{{ u.p3 }}</td>
+                    <td>{{ u.star_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <a href="{{ url_for('rankings') }}" role="button" class="secondary" style="width:100%;text-align:center;margin-top:0.5rem;">查看完整排名</a>
+</div>
+{% endif %}
+
+{% if not current_user.is_authenticated %}
+<div class="card" style="text-align:center;">
+    <p>加入竞猜，成为收米之王！</p>
+    <a href="{{ url_for('login_page') }}" role="button">登录 / 注册</a>
+</div>
+{% endif %}
+
+{% endblock %}
