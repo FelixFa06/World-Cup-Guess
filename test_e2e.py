@@ -57,17 +57,17 @@ print("=" * 60)
 # ── Test 1: Register ──
 print("\n📝 Test 1: User Registration")
 try:
-    # Register 大福 (already exists from previous run? ignore)
-    s, b, _ = req("POST", "/api/register", {"nickname": "大福", "password": "123"})
-    check("Register 大福", b.get("ok") is True or "已被注册" in b.get("msg", ""),
+    # Register 玩家A (already exists from previous run? ignore)
+    s, b, _ = req("POST", "/api/register", {"nickname": "玩家A", "password": "123"})
+    check("Register 玩家A", b.get("ok") is True or "已被注册" in b.get("msg", ""),
           b.get("msg", ""))
 
-    s, b, c1 = req("POST", "/api/register", {"nickname": "闫江帆", "password": "456"})
-    check("Register 闫江帆", b.get("ok") is True or "已被注册" in b.get("msg", ""),
+    s, b, c1 = req("POST", "/api/register", {"nickname": "玩家B", "password": "456"})
+    check("Register 玩家B", b.get("ok") is True or "已被注册" in b.get("msg", ""),
           b.get("msg", ""))
 
-    s, b, c2 = req("POST", "/api/register", {"nickname": "头像不是张墨", "password": "789"})
-    check("Register 头像不是张墨", b.get("ok") is True or "已被注册" in b.get("msg", ""),
+    s, b, c2 = req("POST", "/api/register", {"nickname": "玩家C", "password": "789"})
+    check("Register 玩家C", b.get("ok") is True or "已被注册" in b.get("msg", ""),
           b.get("msg", ""))
 except Exception as e:
     check("Registration test", False, str(e))
@@ -76,14 +76,14 @@ except Exception as e:
 print("\n🔑 Test 2: Login")
 try:
     s, b, admin_cookies = req("POST", "/api/login",
-                               {"nickname": "法童", "password": "admin123"})
+                               {"nickname": "admin", "password": "admin123"})
     check("Admin login", b.get("ok") is True and b.get("is_admin") is True,
           b.get("msg", ""))
 
-    s, b, user_cookies = req("POST", "/api/login", {"nickname": "大福", "password": "123"})
+    s, b, user_cookies = req("POST", "/api/login", {"nickname": "玩家A", "password": "123"})
     check("User login", b.get("ok") is True, b.get("msg", ""))
 
-    s, b, _ = req("POST", "/api/login", {"nickname": "大福", "password": "wrong"})
+    s, b, _ = req("POST", "/api/login", {"nickname": "玩家A", "password": "wrong"})
     check("Wrong password rejected", b.get("ok") is False, b.get("msg", ""))
 except Exception as e:
     check("Login test", False, str(e))
@@ -131,34 +131,34 @@ except Exception as e:
 # ── Test 5: Submit predictions ──
 print("\n🎯 Test 5: Submit Match Predictions")
 try:
-    # 大福 predicts France 1-1 Belgium
+    # 玩家A predicts France 1-1 Belgium
     s, b, _ = req("POST", "/api/predict/match/1",
                    {"score_a": 1, "score_b": 1},
                    cookies=user_cookies)
-    check("大福 predicts match 1", b.get("ok") is True, b.get("msg", ""))
+    check("玩家A predicts match 1", b.get("ok") is True, b.get("msg", ""))
 
-    # Login as 闫江帆
+    # Login as 玩家B
     s, b, yjf_cookies = req("POST", "/api/login",
-                             {"nickname": "闫江帆", "password": "456"})
-    # 闫江帆 predicts France 2-1 Belgium
+                             {"nickname": "玩家B", "password": "456"})
+    # 玩家B predicts France 2-1 Belgium
     s, b, _ = req("POST", "/api/predict/match/1",
                    {"score_a": 2, "score_b": 1},
                    cookies=yjf_cookies)
-    check("闫江帆 predicts match 1", b.get("ok") is True, b.get("msg", ""))
+    check("玩家B predicts match 1", b.get("ok") is True, b.get("msg", ""))
 
-    # 头像不是张墨 predicts France 8-1 Belgium
+    # 玩家C predicts France 8-1 Belgium
     s, b, zm_cookies = req("POST", "/api/login",
-                            {"nickname": "头像不是张墨", "password": "789"})
+                            {"nickname": "玩家C", "password": "789"})
     s, b, _ = req("POST", "/api/predict/match/1",
                    {"score_a": 8, "score_b": 1},
                    cookies=zm_cookies)
-    check("头像不是张墨 predicts match 1", b.get("ok") is True, b.get("msg", ""))
+    check("玩家C predicts match 1", b.get("ok") is True, b.get("msg", ""))
 
     # Predict match 2 as well (for daily star testing)
     s, b, _ = req("POST", "/api/predict/match/2",
                    {"score_a": 1, "score_b": 0},
                    cookies=user_cookies)
-    check("大福 predicts match 2", b.get("ok") is True, b.get("msg", ""))
+    check("玩家A predicts match 2", b.get("ok") is True, b.get("msg", ""))
 except Exception as e:
     check("Prediction submission", False, str(e))
 
@@ -177,18 +177,18 @@ except Exception as e:
     check("Score calculation", False, str(e))
 
 print("  Verifying individual scores after France 8-1 Belgium:")
-print("    - 大福 pred 1-1: result WRONG (pred draw, real win_a) → 0 pts")
-print("    - 闫江帆 pred 2-1: result CORRECT (win_a), score wrong → 1 pt")
-print("    - 头像不是张墨 pred 8-1: EXACT + big match → 5 pts")
+print("    - 玩家A pred 1-1: result WRONG (pred draw, real win_a) → 0 pts")
+print("    - 玩家B pred 2-1: result CORRECT (win_a), score wrong → 1 pt")
+print("    - 玩家C pred 8-1: EXACT + big match → 5 pts")
 try:
     s, b, _ = req("GET", "/api/match/1/predictions")
     preds = {p["nickname"]: p for p in b.get("predictions", [])}
-    check("大福 0 pts", preds.get("大福", {}).get("points") == 0,
-          f"got {preds.get('大福', {}).get('points')}")
-    check("闫江帆 1 pt", preds.get("闫江帆", {}).get("points") == 1,
-          f"got {preds.get('闫江帆', {}).get('points')}")
-    check("头像不是张墨 5 pts", preds.get("头像不是张墨", {}).get("points") == 5,
-          f"got {preds.get('头像不是张墨', {}).get('points')}")
+    check("玩家A 0 pts", preds.get("玩家A", {}).get("points") == 0,
+          f"got {preds.get('玩家A', {}).get('points')}")
+    check("玩家B 1 pt", preds.get("玩家B", {}).get("points") == 1,
+          f"got {preds.get('玩家B', {}).get('points')}")
+    check("玩家C 5 pts", preds.get("玩家C", {}).get("points") == 5,
+          f"got {preds.get('玩家C', {}).get('points')}")
 except Exception as e:
     check("Score verification", False, str(e))
 
@@ -209,7 +209,7 @@ try:
     resp = urllib.request.urlopen(urllib.request.Request(BASE + "/rankings"))
     html = resp.read().decode()
     check("Rankings page loads", "积分排名" in html, "page content missing")
-    check("大福 appears in rankings", "大福" in html, "user not in rankings")
+    check("玩家A appears in rankings", "玩家A" in html, "user not in rankings")
 except Exception as e:
     check("Rankings page", False, str(e))
 
@@ -220,23 +220,23 @@ try:
     s, b, _ = req("POST", "/api/predict/p1",
                    {"champion": "法国", "golden_boot": "姆巴佩", "golden_ball": "姆巴佩"},
                    cookies=user_cookies)
-    check("大福 submits P1", b.get("ok") is True, b.get("msg", ""))
+    check("玩家A submits P1", b.get("ok") is True, b.get("msg", ""))
 
     # Admin scores P1
     s, b, _ = req("POST", "/api/admin/score-p1",
                    {"champion": "法国", "golden_boot": "姆巴佩", "golden_ball": "维尼修斯"},
                    cookies=admin_cookies)
     check("P1 scored", b.get("ok") is True, b.get("msg", ""))
-    # 大福 should have 5+5+0 = 10 pts for P1
+    # 玩家A should have 5+5+0 = 10 pts for P1
 except Exception as e:
     check("Project 1 scoring", False, str(e))
 
 # ── Test 10: Final scoring check ──
 print("\n🎯 Test 10: Final Scoring Verification")
 print("  Expected (just P3 for test users):")
-print("    头像不是张墨: P3=5 (exact big match)")
-print("    闫江帆: P3=1 (correct result)")
-print("    大福: P3=0 (wrong) + P3 match2=3 (exact 1-0)")
+print("    玩家C: P3=5 (exact big match)")
+print("    玩家B: P3=1 (correct result)")
+print("    玩家A: P3=0 (wrong) + P3 match2=3 (exact 1-0)")
 print("          Total P3=3, P1=10 → Total=13")
 
 # ── Summary ──

@@ -11,7 +11,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Admin account
-    ADMIN_NICKNAME = os.environ.get("ADMIN_NICKNAME", "法童")
+    ADMIN_NICKNAME = os.environ.get("ADMIN_NICKNAME", "admin")
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
     # Tournament config
