@@ -17,16 +17,27 @@ class Config:
     # Tournament config
     TOURNAMENT_START = "2026-06-11"
     TOURNAMENT_END = "2026-07-19"
+    GROUP_STAGE_START = "2026-06-11"
+    GROUP_STAGE_END = "2026-06-27"
 
     # Scoring rules
+    # Project 1: Champion / Golden Boot / Golden Ball
     P1_CHAMPION_PTS = 5
     P1_GOLDEN_BOOT_PTS = 5
     P1_GOLDEN_BALL_PTS = 5
-    P2_PER_TEAM_PTS = 2
-    P2_MAX_PTS = 8
-    P3_EXACT_PTS = 3
-    P3_RESULT_PTS = 1
-    P3_FINAL_MULTIPLIER = 2
-    P3_BIG_MATCH_GOALS = 5  # total goals >= this
-    P3_BIG_MATCH_DIFF = 3  # goal diff >= this
-    P3_BIG_MATCH_PTS = 5  # exact prediction bonus points
+
+    # Project 2: Group stage ranking (12 groups, 2pts per group)
+    P2_GROUP_PTS = 2
+    P2_MAX_PTS = 24  # 12 groups x 2 pts
+
+    # Project 3: Semifinal predictions (4 zones, was P2)
+    P3_PER_TEAM_PTS = 2
+    P3_MAX_PTS = 8
+
+    # Project 4: Match predictions (was P3)
+    P4_EXACT_PTS = 3
+    P4_RESULT_PTS = 1
+    P4_FINAL_MULTIPLIER = 2
+    P4_BIG_MATCH_GOALS = 5  # total goals >= this
+    P4_BIG_MATCH_DIFF = 3  # goal diff >= this
+    P4_BIG_MATCH_PTS = 5  # exact prediction bonus points

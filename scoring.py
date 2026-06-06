@@ -3,8 +3,10 @@ Scoring engine for World Cup Guess game.
 
 Rules:
   Project 1: Champion (5pts) + Golden Boot (5pts) + Golden Ball (5pts)
-  Project 2: 4 zones, pick 1 team each, 2pts per correct, max 8pts
-  Project 3: Exact score = 3pts, correct result = 1pt.
+  Project 2: Group stage ranking — 12 groups, predict 1st & 2nd,
+              both correct + correct order → 2pts per group, max 24pts
+  Project 3: 4 zones, pick 1 team each, 2pts per correct, max 8pts
+  Project 4: Exact score = 3pts, correct result = 1pt.
               Big match (goals>=5 or diff>=3): exact = 5pts.
               Final: multiplier x2.
 """
@@ -65,7 +67,7 @@ def score_project1(pick, real_champion, real_golden_boot, real_golden_ball):
 
 def score_project2(pick, semifinal_teams):
     """
-    Score project 2 picks.
+    Score project 3 (display) / project 2 picks (DB model).
 
     Args:
         pick: Project2Pick object
@@ -83,7 +85,33 @@ def score_project2(pick, semifinal_teams):
     actual = set(semifinal_teams)
 
     correct = len(predicted & actual)
-    return correct * Config.P2_PER_TEAM_PTS
+    return correct * Config.P3_PER_TEAM_PTS
+
+
+def score_group_stage(pick, actual_first, actual_second):
+    """
+    Score a single group stage prediction.
+
+    Both first AND second place must be correct (order matters).
+    Returns 2 points if both are correct, 0 otherwise.
+
+    Args:
+        pick: GroupStagePick object
+        actual_first: actual first place team name
+        actual_second: actual second place team name
+
+    Returns:
+        int: 2 if both correct, 0 otherwise
+    """
+    from config import Config
+
+    if not actual_first or not actual_second:
+        return 0
+
+    if pick.first_place == actual_first and pick.second_place == actual_second:
+        return Config.P2_GROUP_PTS
+
+    return 0
 
 
 def calculate_daily_stars(db, match_date):
@@ -175,6 +203,7 @@ def get_leaderboard():
             "p1": user.get_p1_score(),
             "p2": user.get_p2_score(),
             "p3": user.get_p3_score(),
+            "p4": user.get_p4_score(),
             "total": user.get_total_score(),
             "star_count": user.get_daily_star_count(),
         })
