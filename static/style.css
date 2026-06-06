@@ -1,6 +1,9 @@
 /* Custom styles on top of Pico.css */
 :root {
-    --primary: #1a73e8;
+    --primary: #2e7d32;
+    --pico-primary: #2e7d32;
+    --pico-primary-hover: #1b5e20;
+    --pico-primary-focus: rgba(46, 125, 50, 0.25);
     --gold: #f0b90b;
     --silver: #a0a0a0;
     --bronze: #cd7f32;
@@ -157,7 +160,7 @@ footer {
 
 .flash-success { background: #e6f4ea; color: #1e7e34; }
 .flash-error { background: #fce8e6; color: #c5221f; }
-.flash-info { background: #e8f0fe; color: #1a73e8; }
+.flash-info { background: #e8f5e9; color: #2e7d32; }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-8px); }
@@ -171,7 +174,7 @@ footer {
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: bold;
-    background: #e8f0fe;
+    background: #e8f5e9;
     color: var(--primary);
 }
 
