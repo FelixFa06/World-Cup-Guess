@@ -2,7 +2,9 @@
 :root {
     --primary: #2e7d32;
     --pico-primary: #2e7d32;
+    --pico-primary-background: #2e7d32;
     --pico-primary-hover: #1b5e20;
+    --pico-primary-hover-background: #1b5e20;
     --pico-primary-focus: rgba(46, 125, 50, 0.25);
     --gold: #f0b90b;
     --silver: #a0a0a0;
