@@ -192,6 +192,20 @@ def calculate_daily_stars(db, match_date):
     return stars
 
 
+def snapshot_leaderboard_ranks(db):
+    """Copy current ranks to users.previous_rank before scoring changes."""
+    leaderboard = get_leaderboard()
+    from models import User
+    try:
+        for entry in leaderboard:
+            user = User.query.get(entry["user_id"])
+            if user and hasattr(user, 'previous_rank'):
+                user.previous_rank = entry["rank"]
+        db.session.commit()
+    except Exception:
+        pass  # Column may not exist yet; run init_db.py to migrate
+
+
 def get_leaderboard():
     """
     Get current leaderboard sorted by total score desc.
@@ -214,6 +228,7 @@ def get_leaderboard():
             "p4": user.get_p4_score(),
             "total": user.get_total_score(),
             "star_count": user.get_daily_star_count(),
+            "previous_rank": getattr(user, 'previous_rank', None),
         })
 
     leaderboard.sort(key=lambda x: (-x["total"], x["nickname"]))

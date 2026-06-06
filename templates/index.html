@@ -2,7 +2,7 @@
 {% block title %}世界杯竞猜 - 首页{% endblock %}
 {% block content %}
 
-<h2>🏆 2026 世界杯竞猜</h2>
+<h2>🏆 2026 世界杯竞猜 · World Cup Guess</h2>
 <p style="color:#888;">小组赛 6月11日开打，淘汰赛竞猜即将开启！</p>
 
 {% if current_user.is_authenticated and not current_user.is_admin %}
@@ -116,7 +116,18 @@
             <tbody>
                 {% for u in leaderboard[:5] %}
                 <tr>
-                    <td>{{ u.rank }}</td>
+                    <td>
+                        {{ u.rank }}
+                        {% if u.previous_rank is not none %}
+                            {% if u.previous_rank > u.rank %}
+                            <span style="color:#28a745;font-size:0.8rem;" title="上升">↑</span>
+                            {% elif u.previous_rank < u.rank %}
+                            <span style="color:#dc3545;font-size:0.8rem;" title="下降">↓</span>
+                            {% else %}
+                            <span style="color:#888;font-size:0.8rem;" title="不变">–</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
                     <td>
                         {{ u.nickname }}
                         {% if u.star_count > 0 %}

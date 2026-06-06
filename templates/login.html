@@ -52,26 +52,35 @@ function toggleForm() {
 }
 
 document.getElementById('login-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('login-btn');
     const nickname = document.getElementById('login-nickname').value.trim();
     const password = document.getElementById('login-password').value.trim();
     if (!nickname || !password) {
         showError('login-error', '请填写昵称和密码');
         return;
     }
-    const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({nickname, password})
-    });
-    const data = await res.json();
-    if (data.ok) {
-        window.location.href = data.is_admin ? '/admin' : '/';
-    } else {
-        showError('login-error', data.msg);
+    setLoading(btn, '登录中...');
+    try {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nickname, password})
+        });
+        const data = await res.json();
+        if (data.ok) {
+            window.location.href = data.is_admin ? '/admin' : '/';
+        } else {
+            showError('login-error', data.msg);
+            resetLoading(btn);
+        }
+    } catch (e) {
+        showError('login-error', '网络错误，请重试');
+        resetLoading(btn);
     }
 });
 
 document.getElementById('register-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('register-btn');
     const nickname = document.getElementById('reg-nickname').value.trim();
     const password = document.getElementById('reg-password').value.trim();
     const password2 = document.getElementById('reg-password2').value.trim();
@@ -87,16 +96,23 @@ document.getElementById('register-btn').addEventListener('click', async () => {
         showError('register-error', '密码至少3位');
         return;
     }
-    const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({nickname, password})
-    });
-    const data = await res.json();
-    if (data.ok) {
-        window.location.href = '/';
-    } else {
-        showError('register-error', data.msg);
+    setLoading(btn, '注册中...');
+    try {
+        const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nickname, password})
+        });
+        const data = await res.json();
+        if (data.ok) {
+            window.location.href = '/';
+        } else {
+            showError('register-error', data.msg);
+            resetLoading(btn);
+        }
+    } catch (e) {
+        showError('register-error', '网络错误，请重试');
+        resetLoading(btn);
     }
 });
 

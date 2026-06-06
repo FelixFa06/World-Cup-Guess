@@ -30,6 +30,15 @@
                     {% else %}{{ u.rank }}
                     {% endif %}
                     </strong>
+                    {% if u.previous_rank is not none %}
+                        {% if u.previous_rank > u.rank %}
+                        <span style="color:#28a745;" title="上升">↑</span>
+                        {% elif u.previous_rank < u.rank %}
+                        <span style="color:#dc3545;" title="下降">↓</span>
+                        {% else %}
+                        <span style="color:#888;" title="不变">–</span>
+                        {% endif %}
+                    {% endif %}
                 </td>
                 <td>
                     <strong>{{ u.nickname }}</strong>

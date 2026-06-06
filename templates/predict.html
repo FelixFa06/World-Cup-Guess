@@ -122,10 +122,10 @@
             <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
             <span class="match-info">{{ match.match_time.strftime('%m/%d %H:%M') }}</span>
             <div class="prediction-input">
-                <input type="number" id="score-a-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_a if pred else '' }}" placeholder="0" style="width:50px;">
+                <input type="number" id="score-a-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_a if pred else '' }}" placeholder="0" style="width:65px;">
                 <span>-</span>
-                <input type="number" id="score-b-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_b if pred else '' }}" placeholder="0" style="width:50px;">
-                <button onclick="submitMatchPrediction({{ match.id }})" style="font-size:0.85rem;padding:0.25rem 0.5rem;">保存</button>
+                <input type="number" id="score-b-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_b if pred else '' }}" placeholder="0" style="width:65px;">
+                <button onclick="submitMatchPrediction({{ match.id }}, this)" style="font-size:0.85rem;padding:0.25rem 0.5rem;">保存</button>
             </div>
             <span id="match-msg-{{ match.id }}" style="font-size:0.8rem;color:var(--primary);"></span>
         </div>
@@ -139,6 +139,8 @@
 // Project 1 submit
 document.getElementById('p1-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
     const data = {
         champion: document.getElementById('p1-champion').value.trim(),
         golden_boot: document.getElementById('p1-boot').value.trim(),
@@ -150,18 +152,27 @@ document.getElementById('p1-form')?.addEventListener('submit', async (e) => {
         showMsg('p1-msg', '请填写全部五项预测', 'red');
         return;
     }
-    const res = await fetch('/api/predict/p1', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    const r = await res.json();
-    showMsg('p1-msg', r.msg, r.ok ? 'green' : 'red');
+    setLoading(btn, '保存中...');
+    try {
+        const res = await fetch('/api/predict/p1', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const r = await res.json();
+        showMsg('p1-msg', r.msg, r.ok ? 'green' : 'red');
+    } catch (e) {
+        showMsg('p1-msg', '网络错误，请重试', 'red');
+    } finally {
+        resetLoading(btn);
+    }
 });
 
 // Project 2 submit (Group stage)
 document.getElementById('p2-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
     const groupNames = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const groups = [];
     let allFilled = true;
@@ -182,18 +193,27 @@ document.getElementById('p2-form')?.addEventListener('submit', async (e) => {
         showMsg('p2-msg', '请填写全部12个小组的预测', 'red');
         return;
     }
-    const res = await fetch('/api/predict/p2', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({groups})
-    });
-    const r = await res.json();
-    showMsg('p2-msg', r.msg, r.ok ? 'green' : 'red');
+    setLoading(btn, '保存中...');
+    try {
+        const res = await fetch('/api/predict/p2', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({groups})
+        });
+        const r = await res.json();
+        showMsg('p2-msg', r.msg, r.ok ? 'green' : 'red');
+    } catch (e) {
+        showMsg('p2-msg', '网络错误，请重试', 'red');
+    } finally {
+        resetLoading(btn);
+    }
 });
 
 // Project 3 submit (Semifinal, was P2)
 document.getElementById('p3-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
     const data = {
         zone_a: document.getElementById('p3-zone-a').value.trim(),
         zone_b: document.getElementById('p3-zone-b').value.trim(),
@@ -208,30 +228,44 @@ document.getElementById('p3-form')?.addEventListener('submit', async (e) => {
         showMsg('p3-msg', '四个分区不能选重复球队', 'red');
         return;
     }
-    const res = await fetch('/api/predict/p3', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    const r = await res.json();
-    showMsg('p3-msg', r.msg, r.ok ? 'green' : 'red');
+    setLoading(btn, '保存中...');
+    try {
+        const res = await fetch('/api/predict/p3', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const r = await res.json();
+        showMsg('p3-msg', r.msg, r.ok ? 'green' : 'red');
+    } catch (e) {
+        showMsg('p3-msg', '网络错误，请重试', 'red');
+    } finally {
+        resetLoading(btn);
+    }
 });
 
 // Project 4 submit (Match prediction, was P3)
-async function submitMatchPrediction(matchId) {
+async function submitMatchPrediction(matchId, btn) {
     const scoreA = parseInt(document.getElementById(`score-a-${matchId}`).value);
     const scoreB = parseInt(document.getElementById(`score-b-${matchId}`).value);
     if (isNaN(scoreA) || isNaN(scoreB) || scoreA < 0 || scoreB < 0) {
         showMsg(`match-msg-${matchId}`, '请输入有效的比分', 'red');
         return;
     }
-    const res = await fetch(`/api/predict/match/${matchId}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({score_a: scoreA, score_b: scoreB})
-    });
-    const r = await res.json();
-    showMsg(`match-msg-${matchId}`, r.msg, r.ok ? 'green' : 'red');
+    setLoading(btn, '...');
+    try {
+        const res = await fetch(`/api/predict/match/${matchId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({score_a: scoreA, score_b: scoreB})
+        });
+        const r = await res.json();
+        showMsg(`match-msg-${matchId}`, r.msg, r.ok ? 'green' : 'red');
+    } catch (e) {
+        showMsg(`match-msg-${matchId}`, '网络错误，请重试', 'red');
+    } finally {
+        resetLoading(btn);
+    }
 }
 
 function showMsg(id, msg, color) {

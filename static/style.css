@@ -116,9 +116,19 @@ footer {
 }
 
 .prediction-input input {
-    width: 50px;
+    width: 65px;
     text-align: center;
     font-size: 1.1rem;
+}
+
+/* Hide number input spinners for compact score inputs */
+.prediction-input input[type="number"]::-webkit-outer-spin-button,
+.prediction-input input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.prediction-input input[type="number"] {
+    -moz-appearance: textfield;
 }
 
 /* Rankings table */

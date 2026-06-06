@@ -2,12 +2,21 @@
 from app import create_app
 from models import db, User
 from config import Config
+from sqlalchemy import text
 
 app = create_app()
 
 with app.app_context():
     db.create_all()
     print("Tables created.")
+
+    # Migrate: add previous_rank column if missing
+    try:
+        db.session.execute(text("ALTER TABLE users ADD COLUMN previous_rank INTEGER"))
+        db.session.commit()
+        print("Column previous_rank added to users table.")
+    except Exception:
+        print("Column previous_rank already exists (or migration skipped).")
 
     admin = User.query.filter_by(nickname=Config.ADMIN_NICKNAME).first()
     if not admin:

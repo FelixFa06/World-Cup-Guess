@@ -13,6 +13,7 @@ class User(UserMixin, db.Model):
     nickname = db.Column(db.String(50), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
+    previous_rank = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
     # Relationships

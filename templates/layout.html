@@ -53,6 +53,19 @@
         });
     }
 
+    // Loading state utilities
+    function setLoading(btn, loadingText) {
+        btn.disabled = true;
+        btn._originalText = btn.textContent;
+        btn.textContent = loadingText || '处理中...';
+    }
+    function resetLoading(btn) {
+        btn.disabled = false;
+        if (btn._originalText) {
+            btn.textContent = btn._originalText;
+        }
+    }
+
     // Auto-dismiss flash messages
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {

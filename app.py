@@ -19,7 +19,7 @@ from config import Config
 from models import db, User, Match, Project1Pick, Project2Pick, GroupStagePick, MatchPrediction, DailyStar
 from scoring import (
     score_match_prediction, score_project1, score_project2, score_group_stage,
-    calculate_daily_stars, get_leaderboard,
+    calculate_daily_stars, get_leaderboard, snapshot_leaderboard_ranks,
 )
 
 
@@ -527,6 +527,9 @@ def create_app():
         match.score_b = score_b
         match.status = "closed"
 
+        # Snapshot ranks before scoring
+        snapshot_leaderboard_ranks(db)
+
         # Score all predictions for this match
         preds = MatchPrediction.query.filter_by(match_id=match.id).all()
         scored_count = 0
@@ -569,6 +572,9 @@ def create_app():
         real_golden_glove = data.get("golden_glove", "").strip()
         real_best_young_player = data.get("best_young_player", "").strip()
 
+        # Snapshot ranks before scoring
+        snapshot_leaderboard_ranks(db)
+
         picks = Project1Pick.query.all()
         count = 0
         for pick in picks:
@@ -603,6 +609,9 @@ def create_app():
                 return jsonify({"ok": False, "msg": "每个小组需提供组名、第一和第二名"}), 400
             results[gn] = (first, second)
 
+        # Snapshot ranks before scoring
+        snapshot_leaderboard_ranks(db)
+
         picks = GroupStagePick.query.all()
         count = 0
         for pick in picks:
@@ -626,6 +635,9 @@ def create_app():
 
         if len(semifinal_teams) != 4:
             return jsonify({"ok": False, "msg": "请提供4支四强球队"}), 400
+
+        # Snapshot ranks before scoring
+        snapshot_leaderboard_ranks(db)
 
         picks = Project2Pick.query.all()
         count = 0

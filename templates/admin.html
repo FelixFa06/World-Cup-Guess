@@ -26,7 +26,7 @@
             </div>
             <div>
                 <label for="team-a">主队</label>
-                <input type="text" id="team-a" placeholder="例如：法国" required>
+                <input type="text" id="team-a" placeholder="例如：阿根廷" required>
             </div>
             <div>
                 <label for="team-b">客队</label>
@@ -126,7 +126,7 @@
         <div class="grid">
             <div>
                 <label for="real-champion">冠军</label>
-                <input type="text" id="real-champion" placeholder="例如：法国" required>
+                <input type="text" id="real-champion" placeholder="例如：阿根廷" required>
             </div>
             <div>
                 <label for="real-boot">金靴（最佳射手）</label>
@@ -207,6 +207,8 @@
 // Add match
 document.getElementById('add-match-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
     const data = {
         round: document.getElementById('round').value,
         match_order: parseInt(document.getElementById('match-order').value),
@@ -214,19 +216,29 @@ document.getElementById('add-match-form').addEventListener('submit', async (e) =
         team_b: document.getElementById('team-b').value.trim(),
         match_time: document.getElementById('match-time').value,
     };
-    const res = await fetch('/api/admin/match', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    const r = await res.json();
-    showMsg('add-match-msg', r.msg, r.ok);
-    if (r.ok) setTimeout(() => location.reload(), 800);
+    setLoading(btn, '添加中...');
+    try {
+        const res = await fetch('/api/admin/match', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const r = await res.json();
+        showMsg('add-match-msg', r.msg, r.ok);
+        if (r.ok) setTimeout(() => location.reload(), 800);
+    } catch (e) {
+        showMsg('add-match-msg', '网络错误，请重试', false);
+    } finally {
+        resetLoading(btn);
+    }
 });
 
 // Enter result
 document.getElementById('result-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    if (!confirm('确认录入比分？这将自动计算所有用户的该场比赛得分。')) return;
     const matchId = parseInt(document.getElementById('result-match').value);
     const scoreA = parseInt(document.getElementById('result-a').value);
     const scoreB = parseInt(document.getElementById('result-b').value);
@@ -234,18 +246,26 @@ document.getElementById('result-form')?.addEventListener('submit', async (e) => 
         showMsg('result-msg', '请完整填写', false);
         return;
     }
-    const res = await fetch('/api/admin/result', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({match_id: matchId, score_a: scoreA, score_b: scoreB})
-    });
-    const r = await res.json();
-    showMsg('result-msg', r.msg, r.ok);
-    if (r.ok) setTimeout(() => location.reload(), 1000);
+    setLoading(btn, '录入中...');
+    try {
+        const res = await fetch('/api/admin/result', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({match_id: matchId, score_a: scoreA, score_b: scoreB})
+        });
+        const r = await res.json();
+        showMsg('result-msg', r.msg, r.ok);
+        if (r.ok) setTimeout(() => location.reload(), 1000);
+    } catch (e) {
+        showMsg('result-msg', '网络错误，请重试', false);
+    } finally {
+        resetLoading(btn);
+    }
 });
 
 // Toggle match status
 async function toggleMatch(matchId) {
+    if (!confirm('确认切换比赛状态？')) return;
     const res = await fetch(`/api/admin/toggle-match/${matchId}`, {method: 'POST'});
     const r = await res.json();
     if (r.ok) location.reload();
@@ -254,6 +274,9 @@ async function toggleMatch(matchId) {
 // Score P1
 document.getElementById('score-p1-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    if (!confirm('确认结算项目一？所有用户的分数将被更新且不可撤销。')) return;
     const data = {
         champion: document.getElementById('real-champion').value.trim(),
         golden_boot: document.getElementById('real-boot').value.trim(),
@@ -261,18 +284,28 @@ document.getElementById('score-p1-form').addEventListener('submit', async (e) =>
         golden_glove: document.getElementById('real-glove').value.trim(),
         best_young_player: document.getElementById('real-young').value.trim(),
     };
-    const res = await fetch('/api/admin/score-p1', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    const r = await res.json();
-    showMsg('score-p1-msg', r.msg, r.ok);
+    setLoading(btn, '结算中...');
+    try {
+        const res = await fetch('/api/admin/score-p1', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const r = await res.json();
+        showMsg('score-p1-msg', r.msg, r.ok);
+    } catch (e) {
+        showMsg('score-p1-msg', '网络错误，请重试', false);
+    } finally {
+        resetLoading(btn);
+    }
 });
 
 // Score P2 (Group stage)
 document.getElementById('score-p2-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    if (!confirm('确认结算项目二？所有用户的分数将被更新且不可撤销。')) return;
     const groupNames = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const groups = [];
     for (const g of groupNames) {
@@ -284,18 +317,28 @@ document.getElementById('score-p2-form').addEventListener('submit', async (e) =>
         }
         groups.push({group_name: g, first_place: first, second_place: second});
     }
-    const res = await fetch('/api/admin/score-p2', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({groups})
-    });
-    const r = await res.json();
-    showMsg('score-p2-msg', r.msg, r.ok);
+    setLoading(btn, '结算中...');
+    try {
+        const res = await fetch('/api/admin/score-p2', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({groups})
+        });
+        const r = await res.json();
+        showMsg('score-p2-msg', r.msg, r.ok);
+    } catch (e) {
+        showMsg('score-p2-msg', '网络错误，请重试', false);
+    } finally {
+        resetLoading(btn);
+    }
 });
 
 // Score P3 (Semifinal, was P2)
 document.getElementById('score-p3-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    if (!confirm('确认结算项目三？所有用户的分数将被更新且不可撤销。')) return;
     const data = {
         semifinal_teams: [
             document.getElementById('sf-1').value.trim(),
@@ -304,13 +347,20 @@ document.getElementById('score-p3-form').addEventListener('submit', async (e) =>
             document.getElementById('sf-4').value.trim(),
         ]
     };
-    const res = await fetch('/api/admin/score-p3', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    const r = await res.json();
-    showMsg('score-p3-msg', r.msg, r.ok);
+    setLoading(btn, '结算中...');
+    try {
+        const res = await fetch('/api/admin/score-p3', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const r = await res.json();
+        showMsg('score-p3-msg', r.msg, r.ok);
+    } catch (e) {
+        showMsg('score-p3-msg', '网络错误，请重试', false);
+    } finally {
+        resetLoading(btn);
+    }
 });
 
 function showMsg(id, msg, ok) {
