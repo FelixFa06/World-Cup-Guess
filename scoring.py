@@ -2,7 +2,8 @@
 Scoring engine for World Cup Guess game.
 
 Rules:
-  Project 1: Champion (5pts) + Golden Boot (5pts) + Golden Ball (5pts)
+  Project 1: Champion (6pts) + Golden Boot (3pts) + Golden Ball (3pts)
+              + Golden Glove (3pts) + Best Young Player (3pts), max 18pts
   Project 2: Group stage ranking — 12 groups, predict 1st & 2nd,
               both correct + correct order → 2pts per group, max 24pts
   Project 3: 4 zones, pick 1 team each, 2pts per correct, max 8pts
@@ -39,7 +40,8 @@ def score_match_prediction(pred_score_a, pred_score_b, real_score_a, real_score_
     return base
 
 
-def score_project1(pick, real_champion, real_golden_boot, real_golden_ball):
+def score_project1(pick, real_champion, real_golden_boot, real_golden_ball,
+                   real_golden_glove, real_best_young_player):
     """
     Score project 1 picks.
 
@@ -48,6 +50,8 @@ def score_project1(pick, real_champion, real_golden_boot, real_golden_ball):
         real_champion: actual champion team name
         real_golden_boot: actual golden boot winner name
         real_golden_ball: actual golden ball winner name
+        real_golden_glove: actual golden glove winner name
+        real_best_young_player: actual best young player winner name
 
     Returns:
         int: total points
@@ -61,6 +65,10 @@ def score_project1(pick, real_champion, real_golden_boot, real_golden_ball):
         total += Config.P1_GOLDEN_BOOT_PTS
     if real_golden_ball and pick.golden_ball_player == real_golden_ball:
         total += Config.P1_GOLDEN_BALL_PTS
+    if real_golden_glove and pick.golden_glove_player == real_golden_glove:
+        total += Config.P1_GOLDEN_GLOVE_PTS
+    if real_best_young_player and pick.best_young_player == real_best_young_player:
+        total += Config.P1_BEST_YOUNG_PLAYER_PTS
 
     return total
 

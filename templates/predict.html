@@ -6,26 +6,38 @@
 
 <!-- Project 1 -->
 <div class="card">
-    <div class="card-header">🏆 项目一：冠军 · 金靴 · 金球</div>
+    <div class="card-header">🏆 项目一：冠军 · 金靴 · 金球 · 金手套 · 最佳年轻球员</div>
     {% if p1_deadline_passed %}
         <p style="color:#d32f2f;">⛔ 项目一已截止（第一场淘汰赛已开始）</p>
         {% if p1_pick %}
-        <p>你的选择：🏆 <strong>{{ p1_pick.champion_team }}</strong> | 👟 <strong>{{ p1_pick.golden_boot_player }}</strong> | 🏅 <strong>{{ p1_pick.golden_ball_player }}</strong></p>
+        <p>你的选择：🏆 <strong>{{ p1_pick.champion_team }}</strong> | 👟 <strong>{{ p1_pick.golden_boot_player }}</strong> | 🏅 <strong>{{ p1_pick.golden_ball_player }}</strong> | 🧤 <strong>{{ p1_pick.golden_glove_player }}</strong> | 🌟 <strong>{{ p1_pick.best_young_player }}</strong></p>
         {% endif %}
     {% else %}
         <form id="p1-form">
             <div class="grid">
                 <div>
-                    <label for="p1-champion">🏆 冠军球队</label>
+                    <label for="p1-champion">🏆 冠军球队（6分）</label>
                     <input type="text" id="p1-champion" placeholder="例如：阿根廷" value="{{ p1_pick.champion_team if p1_pick else '' }}" required>
                 </div>
                 <div>
-                    <label for="p1-boot">👟 金靴得主</label>
+                    <label for="p1-boot">👟 金靴得主（3分）</label>
                     <input type="text" id="p1-boot" placeholder="例如：姆巴佩" value="{{ p1_pick.golden_boot_player if p1_pick else '' }}" required>
+                    <small style="color:#888;">赛事最佳射手</small>
                 </div>
                 <div>
-                    <label for="p1-ball">🏅 金球奖得主</label>
+                    <label for="p1-ball">🏅 金球奖得主（3分）</label>
                     <input type="text" id="p1-ball" placeholder="例如：维尼修斯" value="{{ p1_pick.golden_ball_player if p1_pick else '' }}" required>
+                    <small style="color:#888;">赛事最佳球员</small>
+                </div>
+                <div>
+                    <label for="p1-glove">🧤 金手套得主（3分）</label>
+                    <input type="text" id="p1-glove" placeholder="例如：库尔图瓦" value="{{ p1_pick.golden_glove_player if p1_pick else '' }}" required>
+                    <small style="color:#888;">赛事最佳守门员</small>
+                </div>
+                <div>
+                    <label for="p1-young">🌟 最佳年轻球员（3分）</label>
+                    <input type="text" id="p1-young" placeholder="例如：贝林厄姆" value="{{ p1_pick.best_young_player if p1_pick else '' }}" required>
+                    <small style="color:#888;">赛事最佳21岁以下球员</small>
                 </div>
             </div>
             <button type="submit">💾 保存项目一</button>
@@ -131,9 +143,11 @@ document.getElementById('p1-form')?.addEventListener('submit', async (e) => {
         champion: document.getElementById('p1-champion').value.trim(),
         golden_boot: document.getElementById('p1-boot').value.trim(),
         golden_ball: document.getElementById('p1-ball').value.trim(),
+        golden_glove: document.getElementById('p1-glove').value.trim(),
+        best_young_player: document.getElementById('p1-young').value.trim(),
     };
-    if (!data.champion || !data.golden_boot || !data.golden_ball) {
-        showMsg('p1-msg', '请填写三项预测', 'red');
+    if (!data.champion || !data.golden_boot || !data.golden_ball || !data.golden_glove || !data.best_young_player) {
+        showMsg('p1-msg', '请填写全部五项预测', 'red');
         return;
     }
     const res = await fetch('/api/predict/p1', {

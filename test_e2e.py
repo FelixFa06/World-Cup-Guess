@@ -284,18 +284,20 @@ except Exception as e:
 # ── Test 10: Project 1 scoring ──
 print("\n🏆 Test 10: Project 1 Scoring")
 try:
-    # Submit P1 picks
+    # Submit P1 picks (5 items)
     s, b, _ = req("POST", "/api/predict/p1",
-                   {"champion": "法国", "golden_boot": "姆巴佩", "golden_ball": "姆巴佩"},
+                   {"champion": "法国", "golden_boot": "姆巴佩", "golden_ball": "姆巴佩",
+                    "golden_glove": "库尔图瓦", "best_young_player": "贝林厄姆"},
                    cookies=user_cookies)
     check("玩家A submits P1", b.get("ok") is True, b.get("msg", ""))
 
-    # Admin scores P1
+    # Admin scores P1: champion matches, boot matches, ball wrong, glove matches, young wrong
     s, b, _ = req("POST", "/api/admin/score-p1",
-                   {"champion": "法国", "golden_boot": "姆巴佩", "golden_ball": "维尼修斯"},
+                   {"champion": "法国", "golden_boot": "姆巴佩", "golden_ball": "维尼修斯",
+                    "golden_glove": "库尔图瓦", "best_young_player": "穆西亚拉"},
                    cookies=admin_cookies)
     check("P1 scored", b.get("ok") is True, b.get("msg", ""))
-    # 玩家A should have 5+5+0 = 10 pts for P1
+    # 玩家A: champion 6 + boot 3 + ball 0 + glove 3 + young 0 = 12 pts for P1
 except Exception as e:
     check("Project 1 scoring", False, str(e))
 
@@ -304,7 +306,7 @@ print("\n🎯 Test 11: Final Scoring Verification")
 print("  Expected scores:")
 print("    玩家C: P2=0 (didn't submit), P4=5 (exact big match) → Total=5")
 print("    玩家B: P2=0 (all wrong 2nd), P4=1 (correct result) → Total=1")
-print("    玩家A: P2=24 (all correct), P4=0+3=3, P1=10 → Total=37")
+print("    玩家A: P2=24 (all correct), P4=0+3=3, P1=12 (6+3+0+3+0) → Total=39")
 
 # ── Summary ──
 print("\n" + "=" * 60)

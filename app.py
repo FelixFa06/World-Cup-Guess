@@ -278,15 +278,19 @@ def create_app():
         champion = data.get("champion", "").strip()
         golden_boot = data.get("golden_boot", "").strip()
         golden_ball = data.get("golden_ball", "").strip()
+        golden_glove = data.get("golden_glove", "").strip()
+        best_young_player = data.get("best_young_player", "").strip()
 
-        if not champion or not golden_boot or not golden_ball:
-            return jsonify({"ok": False, "msg": "三项预测不能为空"}), 400
+        if not all([champion, golden_boot, golden_ball, golden_glove, best_young_player]):
+            return jsonify({"ok": False, "msg": "五项预测不能为空"}), 400
 
         pick = Project1Pick.query.filter_by(user_id=current_user.id).first()
         if pick:
             pick.champion_team = champion
             pick.golden_boot_player = golden_boot
             pick.golden_ball_player = golden_ball
+            pick.golden_glove_player = golden_glove
+            pick.best_young_player = best_young_player
             pick.updated_at = utcnow()
         else:
             pick = Project1Pick(
@@ -294,6 +298,8 @@ def create_app():
                 champion_team=champion,
                 golden_boot_player=golden_boot,
                 golden_ball_player=golden_ball,
+                golden_glove_player=golden_glove,
+                best_young_player=best_young_player,
             )
             db.session.add(pick)
 
@@ -560,11 +566,15 @@ def create_app():
         real_champion = data.get("champion", "").strip()
         real_golden_boot = data.get("golden_boot", "").strip()
         real_golden_ball = data.get("golden_ball", "").strip()
+        real_golden_glove = data.get("golden_glove", "").strip()
+        real_best_young_player = data.get("best_young_player", "").strip()
 
         picks = Project1Pick.query.all()
         count = 0
         for pick in picks:
-            pick.score = score_project1(pick, real_champion, real_golden_boot, real_golden_ball)
+            pick.score = score_project1(pick, real_champion, real_golden_boot,
+                                        real_golden_ball, real_golden_glove,
+                                        real_best_young_player)
             count += 1
 
         db.session.commit()

@@ -42,7 +42,7 @@ SQLAlchemy ORM (models.py) → SQLite (instance/guess.db)
 
 ## 核心算分规则 (scoring.py)
 
-- **项目一**：冠军 5分 / 金靴 5分 / 金球 5分 — `score_project1()`
+- **项目一**：冠军 6分 / 金靴 3分 / 金球 3分 / 金手套 3分 / 最佳年轻球员 3分，满分 18分 — `score_project1()`
 - **项目二**：小组赛排名，12组各猜第一第二名，全对且顺序正确得2分/组，满分24分 — `score_group_stage()`
 - **项目三**：4个分区各选1队进四强，每对1队 2分 — `score_project2()`（DB 表仍为 project2_picks）
 - **项目四**：比分全对 3分，胜负关系对 1分；总进球≥5 或 分差≥3 → 猜对比分 5分；决赛翻倍 — `score_match_prediction()`

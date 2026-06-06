@@ -113,6 +113,8 @@ class Project1Pick(db.Model):
     champion_team = db.Column(db.String(100), nullable=False)
     golden_boot_player = db.Column(db.String(100), nullable=False)
     golden_ball_player = db.Column(db.String(100), nullable=False)
+    golden_glove_player = db.Column(db.String(100), nullable=False)
+    best_young_player = db.Column(db.String(100), nullable=False)
     score = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     updated_at = db.Column(

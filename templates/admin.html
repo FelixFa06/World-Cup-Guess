@@ -121,7 +121,7 @@
 
 <!-- Score Project 1 & 2 & 3 -->
 <div class="admin-section">
-    <h3>🏆 结算项目一（冠军/金靴/金球）</h3>
+    <h3>🏆 结算项目一（冠军 + 金靴/金球/金手套/最佳年轻球员）</h3>
     <form id="score-p1-form">
         <div class="grid">
             <div>
@@ -129,12 +129,20 @@
                 <input type="text" id="real-champion" placeholder="例如：法国" required>
             </div>
             <div>
-                <label for="real-boot">金靴</label>
+                <label for="real-boot">金靴（最佳射手）</label>
                 <input type="text" id="real-boot" placeholder="例如：姆巴佩" required>
             </div>
             <div>
-                <label for="real-ball">金球</label>
+                <label for="real-ball">金球（最佳球员）</label>
                 <input type="text" id="real-ball" placeholder="例如：维尼修斯" required>
+            </div>
+            <div>
+                <label for="real-glove">金手套（最佳守门员）</label>
+                <input type="text" id="real-glove" placeholder="例如：库尔图瓦" required>
+            </div>
+            <div>
+                <label for="real-young">最佳年轻球员（≤21岁）</label>
+                <input type="text" id="real-young" placeholder="例如：贝林厄姆" required>
             </div>
         </div>
         <button type="submit">结算项目一</button>
@@ -250,6 +258,8 @@ document.getElementById('score-p1-form').addEventListener('submit', async (e) =>
         champion: document.getElementById('real-champion').value.trim(),
         golden_boot: document.getElementById('real-boot').value.trim(),
         golden_ball: document.getElementById('real-ball').value.trim(),
+        golden_glove: document.getElementById('real-glove').value.trim(),
+        best_young_player: document.getElementById('real-young').value.trim(),
     };
     const res = await fetch('/api/admin/score-p1', {
         method: 'POST',

@@ -21,10 +21,13 @@ class Config:
     GROUP_STAGE_END = "2026-06-27"
 
     # Scoring rules
-    # Project 1: Champion / Golden Boot / Golden Ball
-    P1_CHAMPION_PTS = 5
-    P1_GOLDEN_BOOT_PTS = 5
-    P1_GOLDEN_BALL_PTS = 5
+    # Project 1: Champion + 4 individual awards (Golden Boot/Ball/Glove, Best Young Player)
+    P1_CHAMPION_PTS = 6
+    P1_GOLDEN_BOOT_PTS = 3
+    P1_GOLDEN_BALL_PTS = 3
+    P1_GOLDEN_GLOVE_PTS = 3
+    P1_BEST_YOUNG_PLAYER_PTS = 3
+    P1_MAX_PTS = 18  # 6 + 3*4
 
     # Project 2: Group stage ranking (12 groups, 2pts per group)
     P2_GROUP_PTS = 2
