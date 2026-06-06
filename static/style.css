@@ -53,6 +53,28 @@ nav ul li:first-child {
     font-size: 1.1rem;
 }
 
+/* ── Buttons: force green override (Pico.css default is blue) ── */
+button:not(.secondary):not(.outline):not(.contrast),
+input[type="submit"]:not(.secondary):not(.outline):not(.contrast),
+a[role="button"]:not(.secondary):not(.outline):not(.contrast) {
+    background: #2e7d32 !important;
+    border-color: #2e7d32 !important;
+    color: #fff !important;
+}
+
+button:not(.secondary):not(.outline):not(.contrast):hover,
+input[type="submit"]:not(.secondary):not(.outline):not(.contrast):hover,
+a[role="button"]:not(.secondary):not(.outline):not(.contrast):hover {
+    background: #1b5e20 !important;
+    border-color: #1b5e20 !important;
+}
+
+button:not(.secondary):not(.outline):not(.contrast):focus-visible,
+input[type="submit"]:not(.secondary):not(.outline):not(.contrast):focus-visible,
+a[role="button"]:not(.secondary):not(.outline):not(.contrast):focus-visible {
+    box-shadow: 0 0 0 0.2rem rgba(46, 125, 50, 0.25) !important;
+}
+
 /* Footer */
 footer {
     text-align: center;
