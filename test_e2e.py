@@ -117,6 +117,42 @@ try:
 except Exception as e:
     check("Match management", False, str(e))
 
+# ── Test 3b: Delete match ──
+print("\n🗑 Test 3b: Delete Match")
+try:
+    # Add a match that we'll delete
+    s, b, _ = req("POST", "/api/admin/match",
+                   {"round": "QF", "match_order": 99,
+                    "team_a": "测试队A", "team_b": "测试队B",
+                    "match_time": "2026-07-15T18:00"},
+                   cookies=admin_cookies)
+    check("Add match to delete", b.get("ok") is True, b.get("msg", ""))
+    del_match_id = 3  # third match added
+
+    # Open it and have a user predict
+    s, b, _ = req("POST", f"/api/admin/toggle-match/{del_match_id}", cookies=admin_cookies)
+    s, b, _ = req("POST", f"/api/predict/match/{del_match_id}",
+                   {"score_a": 2, "score_b": 1},
+                   cookies=user_cookies)
+    check("User predicts on match to delete", b.get("ok") is True, b.get("msg", ""))
+
+    # Delete the match
+    s, b, _ = req("POST", f"/api/admin/match/{del_match_id}/delete", cookies=admin_cookies)
+    check("Delete match succeeds", b.get("ok") is True, b.get("msg", ""))
+    check("Delete msg mentions predictions",
+          "1 条预测" in b.get("msg", ""),
+          b.get("msg", ""))
+
+    # Non-admin cannot delete
+    s, b, _ = req("POST", "/api/admin/match/1/delete", cookies=user_cookies)
+    check("Non-admin blocked from delete", b.get("ok") is False, b.get("msg", ""))
+
+    # Verify the deleted match returns 404
+    s, b, _ = req("POST", f"/api/admin/match/{del_match_id}/delete", cookies=admin_cookies)
+    check("Deleted match returns 404", s == 404, f"status={s}")
+except Exception as e:
+    check("Delete match", False, str(e))
+
 # ── Test 4: Admin opens match for predictions ──
 print("\n🔓 Test 4: Open Match for Prediction")
 try:

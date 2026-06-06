@@ -501,6 +501,28 @@ def create_app():
 
         return jsonify({"ok": True, "msg": f"比赛状态已更新为: {match.status}"})
 
+    @app.route("/api/admin/match/<int:match_id>/delete", methods=["POST"])
+    @login_required
+    def api_admin_delete_match(match_id):
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        match = Match.query.get(match_id)
+        if not match:
+            return jsonify({"ok": False, "msg": "比赛不存在或已被删除"}), 404
+
+        # Count and delete associated predictions
+        pred_count = MatchPrediction.query.filter_by(match_id=match.id).count()
+        MatchPrediction.query.filter_by(match_id=match.id).delete()
+
+        db.session.delete(match)
+        db.session.commit()
+
+        return jsonify({
+            "ok": True,
+            "msg": f"比赛「{match.team_a} vs {match.team_b}」已删除（连带 {pred_count} 条预测）",
+        })
+
     @app.route("/api/admin/result", methods=["POST"])
     @login_required
     def api_admin_result():
