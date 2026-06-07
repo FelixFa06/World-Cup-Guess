@@ -16,7 +16,7 @@ from flask_login import (
 from werkzeug.security import check_password_hash
 
 from config import Config
-from models import db, User, Match, Project1Pick, Project2Pick, GroupStagePick, MatchPrediction, DailyStar, Team
+from models import db, User, Match, Project1Pick, Project2Pick, GroupStagePick, MatchPrediction, DailyStar, Team, SystemSetting
 from scoring import (
     score_match_prediction, score_project1, score_project2, score_group_stage,
     calculate_daily_stars, get_leaderboard, snapshot_leaderboard_ranks,
@@ -47,6 +47,44 @@ def create_app():
     @app.context_processor
     def inject_now():
         return {"now": utcnow()}
+
+    # ── Jinja2 filter: flag image from country code ──
+    @app.template_filter("flag_img")
+    def flag_img_filter(country_code):
+        """Convert a country code to a flag <img> tag using flagcdn.com.
+        Falls back to a generic flag if country_code is empty."""
+        if not country_code:
+            return '<span class="flag-img" aria-hidden="true">🏳️</span>'
+        return (
+            f'<img src="https://flagcdn.com/w40/{country_code.lower()}.png"'
+            f' width="24" height="16"'
+            f' class="flag-img" alt="{country_code}"'
+            f' loading="lazy"'
+            f' onerror="this.style.display=\'none\'">'
+        )
+
+    # ── Helper: get/update system settings ──
+    def _get_setting(key, default=""):
+        s = SystemSetting.query.filter_by(key=key).first()
+        return s.value if s else default
+
+    def _set_setting(key, value):
+        s = SystemSetting.query.filter_by(key=key).first()
+        if s:
+            s.value = value
+            s.updated_at = utcnow()
+        else:
+            s = SystemSetting(key=key, value=value)
+            db.session.add(s)
+        db.session.commit()
+
+    def _is_project_closed_by_admin(project_key):
+        """Check if admin has manually closed a project."""
+        return _get_setting(project_key) == "closed"
+
+    def _is_project_open_by_admin(project_key):
+        """Check if admin has manually opened a project."""
+        return _get_setting(project_key) == "open"
 
     # ── Page Routes ──
 
@@ -110,6 +148,7 @@ def create_app():
         # Project 1 status
         p1_pick = Project1Pick.query.filter_by(user_id=current_user.id).first()
         p1_deadline_passed = _is_p1_deadline_passed()
+        p1_admin_closed = _is_project_closed_by_admin("p1_status")
 
         # Project 2 status (Group stage ranking - NEW)
         p2_group_picks = GroupStagePick.query.filter_by(
@@ -117,11 +156,13 @@ def create_app():
         ).order_by(GroupStagePick.group_name).all()
         p2_group_picks_map = {gp.group_name: gp for gp in p2_group_picks}
         p2_deadline_passed = _is_p2_deadline_passed()
+        p2_admin_closed = _is_project_closed_by_admin("p2_status")
 
         # Project 3 status (Semifinal - was P2)
         p3_pick = Project2Pick.query.filter_by(user_id=current_user.id).first()
         p3_open = _is_p3_open()
         p3_deadline_passed = _is_p3_deadline_passed()
+        p3_admin_closed = _is_project_closed_by_admin("p3_status")
 
         # Project 4: Match predictions (was P3)
         open_matches = Match.query.filter_by(status="open").order_by(
@@ -144,11 +185,14 @@ def create_app():
             "predict.html",
             p1_pick=p1_pick,
             p1_deadline_passed=p1_deadline_passed,
+            p1_admin_closed=p1_admin_closed,
             p2_group_picks_map=p2_group_picks_map,
             p2_deadline_passed=p2_deadline_passed,
+            p2_admin_closed=p2_admin_closed,
             p3_pick=p3_pick,
             p3_open=p3_open,
             p3_deadline_passed=p3_deadline_passed,
+            p3_admin_closed=p3_admin_closed,
             open_matches=open_matches,
             user_predictions=user_predictions,
             all_teams=all_teams,
@@ -205,6 +249,103 @@ def create_app():
             star_map=star_map,
         )
 
+    @app.route("/stats")
+    @login_required
+    def stats_page():
+        """Statistics page: view all users' predictions for P1/P2/P3 after deadlines."""
+        if current_user.is_admin:
+            pass  # admin can always view
+        # Non-admin users can only view projects that have passed deadline
+
+        p1_deadline = _is_p1_deadline_passed()
+        p2_deadline = _is_p2_deadline_passed()
+        p3_deadline = _is_p3_deadline_passed()
+
+        # Get all non-admin users
+        users = User.query.filter_by(is_admin=False).order_by(User.nickname).all()
+
+        # ── P1 data ──
+        p1_picks = []
+        champion_counts = {}
+        if p1_deadline or current_user.is_admin:
+            for u in users:
+                pick = Project1Pick.query.filter_by(user_id=u.id).first()
+                if pick:
+                    p1_picks.append({
+                        "nickname": u.nickname,
+                        "champion": pick.champion_team,
+                        "golden_boot": pick.golden_boot_player,
+                        "golden_ball": pick.golden_ball_player,
+                        "golden_glove": pick.golden_glove_player,
+                        "best_young": pick.best_young_player,
+                        "score": pick.score,
+                    })
+                    champion_counts[pick.champion_team] = champion_counts.get(pick.champion_team, 0) + 1
+
+        # ── P2 data ──
+        p2_picks = []
+        p2_group_data = {}  # {group_name: {first_place: {team: count}, second_place: {team: count}}}
+        if p2_deadline or current_user.is_admin:
+            for g in "ABCDEFGHIJKL":
+                p2_group_data[g] = {"first": {}, "second": {}}
+            for u in users:
+                gp_picks = GroupStagePick.query.filter_by(user_id=u.id).order_by(
+                    GroupStagePick.group_name
+                ).all()
+                if gp_picks:
+                    user_data = {"nickname": u.nickname, "groups": {}}
+                    for gp in gp_picks:
+                        user_data["groups"][gp.group_name] = {
+                            "first": gp.first_place,
+                            "second": gp.second_place,
+                            "score": gp.score,
+                        }
+                        # Aggregate stats
+                        if gp.first_place:
+                            p2_group_data[gp.group_name]["first"][gp.first_place] = \
+                                p2_group_data[gp.group_name]["first"].get(gp.first_place, 0) + 1
+                        if gp.second_place:
+                            p2_group_data[gp.group_name]["second"][gp.second_place] = \
+                                p2_group_data[gp.group_name]["second"].get(gp.second_place, 0) + 1
+                    p2_picks.append(user_data)
+
+        # ── P3 data ──
+        p3_picks = []
+        zone_counts = {"A": {}, "B": {}, "C": {}, "D": {}}
+        if p3_deadline or current_user.is_admin:
+            for u in users:
+                pick = Project2Pick.query.filter_by(user_id=u.id).first()
+                if pick:
+                    p3_picks.append({
+                        "nickname": u.nickname,
+                        "zone_a": pick.zone_a_team,
+                        "zone_b": pick.zone_b_team,
+                        "zone_c": pick.zone_c_team,
+                        "zone_d": pick.zone_d_team,
+                        "score": pick.score,
+                    })
+                    for zone, team in [("A", pick.zone_a_team), ("B", pick.zone_b_team),
+                                        ("C", pick.zone_c_team), ("D", pick.zone_d_team)]:
+                        zone_counts[zone][team] = zone_counts[zone].get(team, 0) + 1
+
+        # Get team info for labels (flag + name)
+        teams_map = {t.name: t for t in Team.query.all()}
+
+        return render_template(
+            "stats.html",
+            p1_deadline=p1_deadline,
+            p2_deadline=p2_deadline,
+            p3_deadline=p3_deadline,
+            p1_picks=p1_picks,
+            p2_picks=p2_picks,
+            p3_picks=p3_picks,
+            champion_counts=champion_counts,
+            p2_group_data=p2_group_data,
+            zone_counts=zone_counts,
+            teams_map=teams_map,
+            user_count=len(users),
+        )
+
     @app.route("/admin")
     @login_required
     def admin():
@@ -216,11 +357,19 @@ def create_app():
         users = User.query.filter_by(is_admin=False).order_by(User.nickname).all()
         all_teams = Team.query.order_by(Team.group_name, Team.name).all()
 
+        # Current project status settings
+        project_settings = {
+            "p1_status": _get_setting("p1_status"),
+            "p2_status": _get_setting("p2_status"),
+            "p3_status": _get_setting("p3_status"),
+        }
+
         return render_template(
             "admin.html",
             matches=matches,
             users=users,
             all_teams=all_teams,
+            project_settings=project_settings,
         )
 
     # ── API Routes: Auth ──
@@ -763,6 +912,39 @@ def create_app():
         db.session.commit()
         return jsonify({"ok": True, "msg": f"项目三（四强预测）已结算，{count} 位群友的分数已更新"})
 
+    # ── API Routes: Admin Project Status Control ──
+
+    @app.route("/api/admin/settings/<key>", methods=["GET", "POST"])
+    @login_required
+    def api_admin_settings(key):
+        """GET: read a setting value. POST: update a setting value."""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        allowed = {"p1_status", "p2_status", "p3_status"}
+        if key not in allowed:
+            return jsonify({"ok": False, "msg": "无效的设置项"}), 400
+
+        if request.method == "GET":
+            val = _get_setting(key)
+            return jsonify({"ok": True, "key": key, "value": val})
+
+        # POST: toggle or set
+        data = request.get_json()
+        value = data.get("value", "").strip()
+        if value not in ("open", "closed", ""):
+            return jsonify({"ok": False, "msg": "值必须为 open / closed / 空字符串"}), 400
+
+        _set_setting(key, value)
+        labels = {"p1_status": "项目一", "p2_status": "项目二", "p3_status": "项目三"}
+        status_labels = {"open": "已开放", "closed": "已截止", "": "自动（默认）"}
+        return jsonify({
+            "ok": True,
+            "msg": f"{labels.get(key, key)} → {status_labels.get(value, value)}",
+            "key": key,
+            "value": value,
+        })
+
     # ── API Routes: Admin Team Management ──
 
     @app.route("/api/admin/teams", methods=["GET"])
@@ -1007,7 +1189,9 @@ def create_app():
     # ── Helper Functions ──
 
     def _is_p1_deadline_passed():
-        """P1 deadline: first knockout match kickoff"""
+        """P1 deadline: first knockout match kickoff, OR admin closed manually."""
+        if _is_project_closed_by_admin("p1_status"):
+            return True
         first_ko = Match.query.filter(
             Match.round_name.in_(["R32", "R16", "QF", "SF", "3RD", "FINAL"])
         ).order_by(Match.match_time.asc()).first()
@@ -1016,18 +1200,26 @@ def create_app():
         return False
 
     def _is_p2_deadline_passed():
-        """P2 (group stage) deadline: group stage start date (2026-06-11)"""
+        """P2 (group stage) deadline: group stage start date, OR admin closed manually."""
+        if _is_project_closed_by_admin("p2_status"):
+            return True
         from config import Config
         gs_start = datetime.strptime(Config.GROUP_STAGE_START, "%Y-%m-%d")
         return utcnow() >= gs_start
 
     def _is_p3_open():
-        """P3 (semifinal) opens when R32 teams are set (first R32 match exists)"""
+        """P3 (semifinal) opens when R32 teams are set AND admin hasn't closed it."""
+        if _is_project_closed_by_admin("p3_status"):
+            return False
+        if _is_project_open_by_admin("p3_status"):
+            return True
         r32_match = Match.query.filter_by(round_name="R32").first()
         return r32_match is not None
 
     def _is_p3_deadline_passed():
-        """P3 (semifinal) deadline: first R32 match kickoff"""
+        """P3 (semifinal) deadline: first R32 match kickoff, OR admin closed manually."""
+        if _is_project_closed_by_admin("p3_status"):
+            return True
         first_r32 = Match.query.filter_by(round_name="R32").order_by(
             Match.match_time.asc()
         ).first()
@@ -1070,73 +1262,74 @@ def create_app():
             }
             teams_data = [
                 # Group A
-                ("墨西哥", "Mexico", "A", "🇲🇽"),
-                ("南非", "South Africa", "A", "🇿🇦"),
-                ("韩国", "South Korea", "A", "🇰🇷"),
-                ("捷克", "Czechia", "A", "🇨🇿"),
+                ("墨西哥", "Mexico", "A", "🇲🇽", "mx"),
+                ("南非", "South Africa", "A", "🇿🇦", "za"),
+                ("韩国", "South Korea", "A", "🇰🇷", "kr"),
+                ("捷克", "Czechia", "A", "🇨🇿", "cz"),
                 # Group B
-                ("加拿大", "Canada", "B", "🇨🇦"),
-                ("波黑", "Bosnia and Herzegovina", "B", "🇧🇦"),
-                ("卡塔尔", "Qatar", "B", "🇶🇦"),
-                ("瑞士", "Switzerland", "B", "🇨🇭"),
+                ("加拿大", "Canada", "B", "🇨🇦", "ca"),
+                ("波黑", "Bosnia and Herzegovina", "B", "🇧🇦", "ba"),
+                ("卡塔尔", "Qatar", "B", "🇶🇦", "qa"),
+                ("瑞士", "Switzerland", "B", "🇨🇭", "ch"),
                 # Group C
-                ("巴西", "Brazil", "C", "🇧🇷"),
-                ("摩洛哥", "Morocco", "C", "🇲🇦"),
-                ("海地", "Haiti", "C", "🇭🇹"),
-                ("苏格兰", "Scotland", "C", "🏴󠁧󠁢󠁳󠁣󠁴󠁿"),
+                ("巴西", "Brazil", "C", "🇧🇷", "br"),
+                ("摩洛哥", "Morocco", "C", "🇲🇦", "ma"),
+                ("海地", "Haiti", "C", "🇭🇹", "ht"),
+                ("苏格兰", "Scotland", "C", "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "gb-sct"),
                 # Group D
-                ("美国", "United States", "D", "🇺🇸"),
-                ("巴拉圭", "Paraguay", "D", "🇵🇾"),
-                ("澳大利亚", "Australia", "D", "🇦🇺"),
-                ("土耳其", "Türkiye", "D", "🇹🇷"),
+                ("美国", "United States", "D", "🇺🇸", "us"),
+                ("巴拉圭", "Paraguay", "D", "🇵🇾", "py"),
+                ("澳大利亚", "Australia", "D", "🇦🇺", "au"),
+                ("土耳其", "Türkiye", "D", "🇹🇷", "tr"),
                 # Group E
-                ("德国", "Germany", "E", "🇩🇪"),
-                ("库拉索", "Curaçao", "E", "🇨🇼"),
-                ("科特迪瓦", "Côte d'Ivoire", "E", "🇨🇮"),
-                ("厄瓜多尔", "Ecuador", "E", "🇪🇨"),
+                ("德国", "Germany", "E", "🇩🇪", "de"),
+                ("库拉索", "Curaçao", "E", "🇨🇼", "cw"),
+                ("科特迪瓦", "Côte d'Ivoire", "E", "🇨🇮", "ci"),
+                ("厄瓜多尔", "Ecuador", "E", "🇪🇨", "ec"),
                 # Group F
-                ("荷兰", "Netherlands", "F", "🇳🇱"),
-                ("日本", "Japan", "F", "🇯🇵"),
-                ("瑞典", "Sweden", "F", "🇸🇪"),
-                ("突尼斯", "Tunisia", "F", "🇹🇳"),
+                ("荷兰", "Netherlands", "F", "🇳🇱", "nl"),
+                ("日本", "Japan", "F", "🇯🇵", "jp"),
+                ("瑞典", "Sweden", "F", "🇸🇪", "se"),
+                ("突尼斯", "Tunisia", "F", "🇹🇳", "tn"),
                 # Group G
-                ("比利时", "Belgium", "G", "🇧🇪"),
-                ("埃及", "Egypt", "G", "🇪🇬"),
-                ("伊朗", "Iran", "G", "🇮🇷"),
-                ("新西兰", "New Zealand", "G", "🇳🇿"),
+                ("比利时", "Belgium", "G", "🇧🇪", "be"),
+                ("埃及", "Egypt", "G", "🇪🇬", "eg"),
+                ("伊朗", "Iran", "G", "🇮🇷", "ir"),
+                ("新西兰", "New Zealand", "G", "🇳🇿", "nz"),
                 # Group H
-                ("西班牙", "Spain", "H", "🇪🇸"),
-                ("佛得角", "Cape Verde", "H", "🇨🇻"),
-                ("沙特", "Saudi Arabia", "H", "🇸🇦"),
-                ("乌拉圭", "Uruguay", "H", "🇺🇾"),
+                ("西班牙", "Spain", "H", "🇪🇸", "es"),
+                ("佛得角", "Cape Verde", "H", "🇨🇻", "cv"),
+                ("沙特", "Saudi Arabia", "H", "🇸🇦", "sa"),
+                ("乌拉圭", "Uruguay", "H", "🇺🇾", "uy"),
                 # Group I
-                ("法国", "France", "I", "🇫🇷"),
-                ("塞内加尔", "Senegal", "I", "🇸🇳"),
-                ("伊拉克", "Iraq", "I", "🇮🇶"),
-                ("挪威", "Norway", "I", "🇳🇴"),
+                ("法国", "France", "I", "🇫🇷", "fr"),
+                ("塞内加尔", "Senegal", "I", "🇸🇳", "sn"),
+                ("伊拉克", "Iraq", "I", "🇮🇶", "iq"),
+                ("挪威", "Norway", "I", "🇳🇴", "no"),
                 # Group J
-                ("阿根廷", "Argentina", "J", "🇦🇷"),
-                ("阿尔及利亚", "Algeria", "J", "🇩🇿"),
-                ("奥地利", "Austria", "J", "🇦🇹"),
-                ("约旦", "Jordan", "J", "🇯🇴"),
+                ("阿根廷", "Argentina", "J", "🇦🇷", "ar"),
+                ("阿尔及利亚", "Algeria", "J", "🇩🇿", "dz"),
+                ("奥地利", "Austria", "J", "🇦🇹", "at"),
+                ("约旦", "Jordan", "J", "🇯🇴", "jo"),
                 # Group K
-                ("葡萄牙", "Portugal", "K", "🇵🇹"),
-                ("刚果(金)", "DR Congo", "K", "🇨🇩"),
-                ("乌兹别克斯坦", "Uzbekistan", "K", "🇺🇿"),
-                ("哥伦比亚", "Colombia", "K", "🇨🇴"),
+                ("葡萄牙", "Portugal", "K", "🇵🇹", "pt"),
+                ("刚果(金)", "DR Congo", "K", "🇨🇩", "cd"),
+                ("乌兹别克斯坦", "Uzbekistan", "K", "🇺🇿", "uz"),
+                ("哥伦比亚", "Colombia", "K", "🇨🇴", "co"),
                 # Group L
-                ("英格兰", "England", "L", "🏴󠁧󠁢󠁥󠁮󠁧󠁿"),
-                ("克罗地亚", "Croatia", "L", "🇭🇷"),
-                ("加纳", "Ghana", "L", "🇬🇭"),
-                ("巴拿马", "Panama", "L", "🇵🇦"),
+                ("英格兰", "England", "L", "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "gb-eng"),
+                ("克罗地亚", "Croatia", "L", "🇭🇷", "hr"),
+                ("加纳", "Ghana", "L", "🇬🇭", "gh"),
+                ("巴拿马", "Panama", "L", "🇵🇦", "pa"),
             ]
-            for name, name_en, group_name, flag in teams_data:
+            for name, name_en, group_name, flag, country_code in teams_data:
                 team = Team(
                     name=name,
                     name_en=name_en,
                     group_name=group_name,
                     zone=zone_map.get(group_name),
                     flag_emoji=flag,
+                    country_code=country_code,
                 )
                 db.session.add(team)
             db.session.commit()

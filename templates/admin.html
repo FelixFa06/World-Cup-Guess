@@ -4,6 +4,40 @@
 
 <h2>🔧 管理后台</h2>
 
+<!-- Project Status Control -->
+<div class="admin-section">
+    <h3>🎛️ 项目填写状态控制</h3>
+    <p style="color:#888;font-size:0.85rem;">手动控制项目一/二/三的开放和截止状态。设为「自动」则由系统根据比赛时间自动判断。</p>
+    <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+        {% set status_labels = {'': '🔄 自动（默认）', 'open': '✅ 强制开放', 'closed': '⛔ 强制截止'} %}
+        {% for proj in [
+            ('p1_status', '🏆 项目一：冠军+奖项'),
+            ('p2_status', '📋 项目二：小组赛排名'),
+            ('p3_status', '🏟️ 项目三：四强预测'),
+        ] %}
+        <div style="border:1px solid #ddd;border-radius:8px;padding:0.75rem;">
+            <strong>{{ proj[1] }}</strong>
+            <div style="margin-top:0.5rem;display:flex;gap:0.3rem;flex-wrap:wrap;">
+                {% set current_val = project_settings.get(proj[0], '') %}
+                {% set btn_class = {'': 'secondary', 'open': '', 'closed': 'outline'}[current_val] %}
+                <span style="font-size:0.8rem;color:#888;display:block;width:100%;">
+                    当前: {{ status_labels.get(current_val, current_val) }}
+                </span>
+                <button onclick="setProjectStatus('{{ proj[0] }}', 'open', this)"
+                        class="{% if current_val == 'open' %}secondary{% endif %}"
+                        style="font-size:0.8rem;padding:0.25rem 0.5rem;">✅ 开放</button>
+                <button onclick="setProjectStatus('{{ proj[0] }}', 'closed', this)"
+                        class="{% if current_val == 'closed' %}secondary{% endif %}"
+                        style="font-size:0.8rem;padding:0.25rem 0.5rem;">⛔ 截止</button>
+                <button onclick="setProjectStatus('{{ proj[0] }}', '', this)"
+                        class="{% if current_val == '' %}secondary{% endif %}"
+                        style="font-size:0.8rem;padding:0.25rem 0.5rem;">🔄 自动</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
 <!-- Add Match -->
 <div class="admin-section">
     <h3>➕ 添加比赛</h3>
@@ -227,7 +261,7 @@
                 {% for t in all_teams %}
                 <tr>
                     <td>{{ t.id }}</td>
-                    <td>{{ t.flag_emoji }} {{ t.name }} <small style="color:#888;">{{ t.name_en }}</small></td>
+                    <td>{{ t.country_code | flag_img | safe }} {{ t.name }} <small style="color:#888;">{{ t.name_en }}</small></td>
                     <td>
                         <select id="team-group-{{ t.id }}" style="font-size:0.8rem;padding:0.15rem;width:70px;">
                             {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
@@ -731,6 +765,27 @@ async function saveUserP3(e) {
     } catch (e) {
         showMsg('admin-p3-msg', '网络错误', false);
     } finally { resetLoading(btn); }
+}
+
+async function setProjectStatus(key, value, btn) {
+    setLoading(btn, '...');
+    try {
+        const res = await fetch(`/api/admin/settings/${key}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({value})
+        });
+        const r = await res.json();
+        if (r.ok) {
+            location.reload();
+        } else {
+            alert(r.msg);
+        }
+    } catch (e) {
+        alert('网络错误，请重试');
+    } finally {
+        resetLoading(btn);
+    }
 }
 
 function showMsg(id, msg, ok) {

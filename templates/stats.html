@@ -1,0 +1,294 @@
+{% extends "layout.html" %}
+{% block title %}竞猜统计 - 世界杯竞猜{% endblock %}
+{% block content %}
+
+<h2>📊 竞猜统计</h2>
+<p style="color:#888;">查看所有群友的竞猜信息。仅对应项目截止后方可查看。</p>
+
+<!-- Chart.js from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<!-- ── Project 1 ── -->
+<div class="card">
+    <div class="card-header">🏆 项目一：冠军 · 金靴 · 金球 · 金手套 · 最佳年轻球员</div>
+    {% if not p1_deadline and not current_user.is_admin %}
+        <p style="color:#d32f2f;">🔒 项目一尚未截止，截止后可查看</p>
+    {% elif not p1_picks %}
+        <p style="color:#888;">暂无群友提交项目一预测</p>
+    {% else %}
+        <p style="color:#888;font-size:0.85rem;">共 {{ p1_picks|length }} 位群友提交，满分 20 分</p>
+
+        <!-- Champion pie chart -->
+        <div style="max-width:500px;margin:1rem auto;">
+            <canvas id="p1-champion-chart"></canvas>
+        </div>
+
+        <!-- Picks table -->
+        <div class="table-responsive" style="margin-top:1rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>群友</th>
+                        <th>🏆 冠军</th>
+                        <th>👟 金靴</th>
+                        <th>🏅 金球</th>
+                        <th>🧤 金手套</th>
+                        <th>🌟 最佳年轻球员</th>
+                        <th>得分</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in p1_picks %}
+                    <tr>
+                        <td><strong>{{ p.nickname }}</strong></td>
+                        <td>
+                            {% set team = teams_map.get(p.champion) %}
+                            {% if team and team.country_code %}{{ team.country_code | flag_img | safe }} {% endif %}{{ p.champion }}
+                        </td>
+                        <td>{{ p.golden_boot }}</td>
+                        <td>{{ p.golden_ball }}</td>
+                        <td>{{ p.golden_glove }}</td>
+                        <td>{{ p.best_young }}</td>
+                        <td><strong>{{ p.score }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+
+<!-- ── Project 2 ── -->
+<div class="card">
+    <div class="card-header">📋 项目二：小组赛排名预测</div>
+    {% if not p2_deadline and not current_user.is_admin %}
+        <p style="color:#d32f2f;">🔒 项目二尚未截止，截止后可查看</p>
+    {% elif not p2_picks %}
+        <p style="color:#888;">暂无群友提交项目二预测</p>
+    {% else %}
+        <p style="color:#888;font-size:0.85rem;">共 {{ p2_picks|length }} 位群友提交，满分 12 分</p>
+
+        <!-- Group stats: show top consensus per group -->
+        <div class="grid" style="margin-top:1rem;">
+            {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
+            {% set gdata = p2_group_data.get(g, {}) %}
+            <div style="border:1px solid #ddd;border-radius:8px;padding:0.5rem;">
+                <strong>{{ g }}组</strong>
+                <div style="font-size:0.8rem;">
+                    <div>🥇 第一热门:
+                        {% set first_sorted = gdata.first | dictsort(reverse=true, by='value') %}
+                        {% if first_sorted %}
+                        <strong>{{ first_sorted[0][0] }}</strong> ({{ first_sorted[0][1] }}人)
+                        {% else %}-{% endif %}
+                    </div>
+                    <div>🥈 第二热门:
+                        {% set second_sorted = gdata.second | dictsort(reverse=true, by='value') %}
+                        {% if second_sorted %}
+                        <strong>{{ second_sorted[0][0] }}</strong> ({{ second_sorted[0][1] }}人)
+                        {% else %}-{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Details toggle per user -->
+        <details style="margin-top:1rem;">
+            <summary style="cursor:pointer;color:var(--primary);">查看每位群友的小组赛预测详情</summary>
+            <div class="table-responsive" style="margin-top:0.5rem;">
+                <table style="font-size:0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>群友</th>
+                            {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
+                            <th>{{ g }}组</th>
+                            {% endfor %}
+                            <th>得分</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in p2_picks %}
+                        <tr>
+                            <td><strong>{{ u.nickname }}</strong></td>
+                            {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
+                            {% set gp = u.groups.get(g, {}) %}
+                            <td>{{ gp.get('first', '-')[:3] }} / {{ gp.get('second', '-')[:3] }}</td>
+                            {% endfor %}
+                            <td><strong>{{ u.groups.values() | sum(attribute='score') }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    {% endif %}
+</div>
+
+<!-- ── Project 3 ── -->
+<div class="card">
+    <div class="card-header">🏟️ 项目三：四强预测</div>
+    {% if not p3_deadline and not current_user.is_admin %}
+        <p style="color:#d32f2f;">🔒 项目三尚未截止，截止后可查看</p>
+    {% elif not p3_picks %}
+        <p style="color:#888;">暂无群友提交项目三预测</p>
+    {% else %}
+        <p style="color:#888;font-size:0.85rem;">共 {{ p3_picks|length }} 位群友提交，满分 8 分</p>
+
+        <!-- Zone pie charts -->
+        <div class="grid" style="margin-top:1rem;">
+            {% for z in [('A', '🔴'), ('B', '🟡'), ('C', '🟢'), ('D', '🔵')] %}
+            <div>
+                <h4>{{ z[1] }} {{ z[0] }}区选择分布</h4>
+                <canvas id="p3-zone-{{ z[0] }}-chart"></canvas>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Picks table -->
+        <div class="table-responsive" style="margin-top:1rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>群友</th>
+                        <th>🔴 A区</th>
+                        <th>🟡 B区</th>
+                        <th>🟢 C区</th>
+                        <th>🔵 D区</th>
+                        <th>得分</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in p3_picks %}
+                    <tr>
+                        <td><strong>{{ p.nickname }}</strong></td>
+                        <td>
+                            {% set team = teams_map.get(p.zone_a) %}
+                            {% if team and team.country_code %}{{ team.country_code | flag_img | safe }} {% endif %}{{ p.zone_a }}
+                        </td>
+                        <td>
+                            {% set team = teams_map.get(p.zone_b) %}
+                            {% if team and team.country_code %}{{ team.country_code | flag_img | safe }} {% endif %}{{ p.zone_b }}
+                        </td>
+                        <td>
+                            {% set team = teams_map.get(p.zone_c) %}
+                            {% if team and team.country_code %}{{ team.country_code | flag_img | safe }} {% endif %}{{ p.zone_c }}
+                        </td>
+                        <td>
+                            {% set team = teams_map.get(p.zone_d) %}
+                            {% if team and team.country_code %}{{ team.country_code | flag_img | safe }} {% endif %}{{ p.zone_d }}
+                        </td>
+                        <td><strong>{{ p.score }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+// ── Chart.js Visualizations ──
+
+// Color palette
+const COLORS = [
+    '#2e7d32', '#f0b90b', '#1565c0', '#c62828', '#6a1b9a',
+    '#00838f', '#e65100', '#4e342e', '#37474f', '#ad1457',
+    '#283593', '#558b2f', '#f9a825', '#0277bd', '#b71c1c',
+];
+
+function generateColors(count) {
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+        colors.push(COLORS[i % COLORS.length]);
+    }
+    return colors;
+}
+
+// P1 Champion chart
+{% if p1_picks and (p1_deadline or current_user.is_admin) %}
+(function() {
+    const data = {{ champion_counts | tojson }};
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+    const total = values.reduce((a,b) => a+b, 0);
+    const percentages = values.map(v => ((v/total)*100).toFixed(1));
+
+    new Chart(document.getElementById('p1-champion-chart'), {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: generateColors(labels.length),
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '🏆 冠军球队预测分布',
+                    font: { size: 14 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.label + ': ' + ctx.raw + '人 (' + percentages[ctx.dataIndex] + '%)';
+                        }
+                    }
+                },
+                legend: {
+                    position: 'bottom',
+                    labels: { font: { size: 11 } }
+                }
+            }
+        }
+    });
+})();
+{% endif %}
+
+// P3 Zone charts
+{% if p3_picks and (p3_deadline or current_user.is_admin) %}
+['A', 'B', 'C', 'D'].forEach(function(zone) {
+    const data = {{ zone_counts | tojson }}[zone];
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+    const total = values.reduce((a,b) => a+b, 0);
+    const percentages = values.map(v => ((v/total)*100).toFixed(1));
+
+    new Chart(document.getElementById('p3-zone-' + zone + '-chart'), {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: generateColors(labels.length),
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: zone + '区四强预测分布',
+                    font: { size: 13 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.label + ': ' + ctx.raw + '人 (' + percentages[ctx.dataIndex] + '%)';
+                        }
+                    }
+                },
+                legend: {
+                    position: 'bottom',
+                    labels: { font: { size: 10 } }
+                }
+            }
+        }
+    });
+});
+{% endif %}
+</script>
+
+{% endblock %}

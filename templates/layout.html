@@ -21,6 +21,7 @@
             {% endif %}
             <li><a href="{{ url_for('matches_page') }}">比赛</a></li>
             <li><a href="{{ url_for('rankings') }}">排名</a></li>
+            <li><a href="{{ url_for('stats_page') }}">统计</a></li>
             {% if current_user.is_admin %}
             <li><a href="{{ url_for('admin') }}">管理</a></li>
             {% endif %}

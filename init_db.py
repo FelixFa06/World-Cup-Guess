@@ -1,6 +1,6 @@
 """Initialize database with tables, admin user, and 48 teams."""
 from app import create_app
-from models import db, User, Team
+from models import db, User, Team, SystemSetting
 from config import Config
 from sqlalchemy import text
 
@@ -17,6 +17,14 @@ with app.app_context():
         print("Column previous_rank added to users table.")
     except Exception:
         print("Column previous_rank already exists (or migration skipped).")
+
+    # Migrate: add country_code column to teams if missing
+    try:
+        db.session.execute(text("ALTER TABLE teams ADD COLUMN country_code VARCHAR(10)"))
+        db.session.commit()
+        print("Column country_code added to teams table.")
+    except Exception:
+        print("Column country_code already exists (or migration skipped).")
 
     admin = User.query.filter_by(nickname=Config.ADMIN_NICKNAME).first()
     if not admin:
@@ -37,78 +45,103 @@ with app.app_context():
         }
         teams_data = [
             # Group A
-            ("墨西哥", "Mexico", "A", "🇲🇽"),
-            ("南非", "South Africa", "A", "🇿🇦"),
-            ("韩国", "South Korea", "A", "🇰🇷"),
-            ("捷克", "Czechia", "A", "🇨🇿"),
+            ("墨西哥", "Mexico", "A", "🇲🇽", "mx"),
+            ("南非", "South Africa", "A", "🇿🇦", "za"),
+            ("韩国", "South Korea", "A", "🇰🇷", "kr"),
+            ("捷克", "Czechia", "A", "🇨🇿", "cz"),
             # Group B
-            ("加拿大", "Canada", "B", "🇨🇦"),
-            ("波黑", "Bosnia and Herzegovina", "B", "🇧🇦"),
-            ("卡塔尔", "Qatar", "B", "🇶🇦"),
-            ("瑞士", "Switzerland", "B", "🇨🇭"),
+            ("加拿大", "Canada", "B", "🇨🇦", "ca"),
+            ("波黑", "Bosnia and Herzegovina", "B", "🇧🇦", "ba"),
+            ("卡塔尔", "Qatar", "B", "🇶🇦", "qa"),
+            ("瑞士", "Switzerland", "B", "🇨🇭", "ch"),
             # Group C
-            ("巴西", "Brazil", "C", "🇧🇷"),
-            ("摩洛哥", "Morocco", "C", "🇲🇦"),
-            ("海地", "Haiti", "C", "🇭🇹"),
-            ("苏格兰", "Scotland", "C", "🏴󠁧󠁢󠁳󠁣󠁴󠁿"),
+            ("巴西", "Brazil", "C", "🇧🇷", "br"),
+            ("摩洛哥", "Morocco", "C", "🇲🇦", "ma"),
+            ("海地", "Haiti", "C", "🇭🇹", "ht"),
+            ("苏格兰", "Scotland", "C", "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "gb-sct"),
             # Group D
-            ("美国", "United States", "D", "🇺🇸"),
-            ("巴拉圭", "Paraguay", "D", "🇵🇾"),
-            ("澳大利亚", "Australia", "D", "🇦🇺"),
-            ("土耳其", "Türkiye", "D", "🇹🇷"),
+            ("美国", "United States", "D", "🇺🇸", "us"),
+            ("巴拉圭", "Paraguay", "D", "🇵🇾", "py"),
+            ("澳大利亚", "Australia", "D", "🇦🇺", "au"),
+            ("土耳其", "Türkiye", "D", "🇹🇷", "tr"),
             # Group E
-            ("德国", "Germany", "E", "🇩🇪"),
-            ("库拉索", "Curaçao", "E", "🇨🇼"),
-            ("科特迪瓦", "Côte d'Ivoire", "E", "🇨🇮"),
-            ("厄瓜多尔", "Ecuador", "E", "🇪🇨"),
+            ("德国", "Germany", "E", "🇩🇪", "de"),
+            ("库拉索", "Curaçao", "E", "🇨🇼", "cw"),
+            ("科特迪瓦", "Côte d'Ivoire", "E", "🇨🇮", "ci"),
+            ("厄瓜多尔", "Ecuador", "E", "🇪🇨", "ec"),
             # Group F
-            ("荷兰", "Netherlands", "F", "🇳🇱"),
-            ("日本", "Japan", "F", "🇯🇵"),
-            ("瑞典", "Sweden", "F", "🇸🇪"),
-            ("突尼斯", "Tunisia", "F", "🇹🇳"),
+            ("荷兰", "Netherlands", "F", "🇳🇱", "nl"),
+            ("日本", "Japan", "F", "🇯🇵", "jp"),
+            ("瑞典", "Sweden", "F", "🇸🇪", "se"),
+            ("突尼斯", "Tunisia", "F", "🇹🇳", "tn"),
             # Group G
-            ("比利时", "Belgium", "G", "🇧🇪"),
-            ("埃及", "Egypt", "G", "🇪🇬"),
-            ("伊朗", "Iran", "G", "🇮🇷"),
-            ("新西兰", "New Zealand", "G", "🇳🇿"),
+            ("比利时", "Belgium", "G", "🇧🇪", "be"),
+            ("埃及", "Egypt", "G", "🇪🇬", "eg"),
+            ("伊朗", "Iran", "G", "🇮🇷", "ir"),
+            ("新西兰", "New Zealand", "G", "🇳🇿", "nz"),
             # Group H
-            ("西班牙", "Spain", "H", "🇪🇸"),
-            ("佛得角", "Cape Verde", "H", "🇨🇻"),
-            ("沙特", "Saudi Arabia", "H", "🇸🇦"),
-            ("乌拉圭", "Uruguay", "H", "🇺🇾"),
+            ("西班牙", "Spain", "H", "🇪🇸", "es"),
+            ("佛得角", "Cape Verde", "H", "🇨🇻", "cv"),
+            ("沙特", "Saudi Arabia", "H", "🇸🇦", "sa"),
+            ("乌拉圭", "Uruguay", "H", "🇺🇾", "uy"),
             # Group I
-            ("法国", "France", "I", "🇫🇷"),
-            ("塞内加尔", "Senegal", "I", "🇸🇳"),
-            ("伊拉克", "Iraq", "I", "🇮🇶"),
-            ("挪威", "Norway", "I", "🇳🇴"),
+            ("法国", "France", "I", "🇫🇷", "fr"),
+            ("塞内加尔", "Senegal", "I", "🇸🇳", "sn"),
+            ("伊拉克", "Iraq", "I", "🇮🇶", "iq"),
+            ("挪威", "Norway", "I", "🇳🇴", "no"),
             # Group J
-            ("阿根廷", "Argentina", "J", "🇦🇷"),
-            ("阿尔及利亚", "Algeria", "J", "🇩🇿"),
-            ("奥地利", "Austria", "J", "🇦🇹"),
-            ("约旦", "Jordan", "J", "🇯🇴"),
+            ("阿根廷", "Argentina", "J", "🇦🇷", "ar"),
+            ("阿尔及利亚", "Algeria", "J", "🇩🇿", "dz"),
+            ("奥地利", "Austria", "J", "🇦🇹", "at"),
+            ("约旦", "Jordan", "J", "🇯🇴", "jo"),
             # Group K
-            ("葡萄牙", "Portugal", "K", "🇵🇹"),
-            ("刚果(金)", "DR Congo", "K", "🇨🇩"),
-            ("乌兹别克斯坦", "Uzbekistan", "K", "🇺🇿"),
-            ("哥伦比亚", "Colombia", "K", "🇨🇴"),
+            ("葡萄牙", "Portugal", "K", "🇵🇹", "pt"),
+            ("刚果(金)", "DR Congo", "K", "🇨🇩", "cd"),
+            ("乌兹别克斯坦", "Uzbekistan", "K", "🇺🇿", "uz"),
+            ("哥伦比亚", "Colombia", "K", "🇨🇴", "co"),
             # Group L
-            ("英格兰", "England", "L", "🏴󠁧󠁢󠁥󠁮󠁧󠁿"),
-            ("克罗地亚", "Croatia", "L", "🇭🇷"),
-            ("加纳", "Ghana", "L", "🇬🇭"),
-            ("巴拿马", "Panama", "L", "🇵🇦"),
+            ("英格兰", "England", "L", "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "gb-eng"),
+            ("克罗地亚", "Croatia", "L", "🇭🇷", "hr"),
+            ("加纳", "Ghana", "L", "🇬🇭", "gh"),
+            ("巴拿马", "Panama", "L", "🇵🇦", "pa"),
         ]
-        for name, name_en, group_name, flag in teams_data:
+        for name, name_en, group_name, flag, country_code in teams_data:
             team = Team(
                 name=name,
                 name_en=name_en,
                 group_name=group_name,
                 zone=zone_map.get(group_name),
                 flag_emoji=flag,
+                country_code=country_code,
             )
             db.session.add(team)
         db.session.commit()
         print(f"Seeded {len(teams_data)} teams.")
     else:
-        print("Teams already exist, skipping seed.")
+        # Update country_code for existing teams that don't have it
+        country_map = {
+            "墨西哥": "mx", "南非": "za", "韩国": "kr", "捷克": "cz",
+            "加拿大": "ca", "波黑": "ba", "卡塔尔": "qa", "瑞士": "ch",
+            "巴西": "br", "摩洛哥": "ma", "海地": "ht", "苏格兰": "gb-sct",
+            "美国": "us", "巴拉圭": "py", "澳大利亚": "au", "土耳其": "tr",
+            "德国": "de", "库拉索": "cw", "科特迪瓦": "ci", "厄瓜多尔": "ec",
+            "荷兰": "nl", "日本": "jp", "瑞典": "se", "突尼斯": "tn",
+            "比利时": "be", "埃及": "eg", "伊朗": "ir", "新西兰": "nz",
+            "西班牙": "es", "佛得角": "cv", "沙特": "sa", "乌拉圭": "uy",
+            "法国": "fr", "塞内加尔": "sn", "伊拉克": "iq", "挪威": "no",
+            "阿根廷": "ar", "阿尔及利亚": "dz", "奥地利": "at", "约旦": "jo",
+            "葡萄牙": "pt", "刚果(金)": "cd", "乌兹别克斯坦": "uz", "哥伦比亚": "co",
+            "英格兰": "gb-eng", "克罗地亚": "hr", "加纳": "gh", "巴拿马": "pa",
+        }
+        updated = 0
+        for t in Team.query.all():
+            if not t.country_code and t.name in country_map:
+                t.country_code = country_map[t.name]
+                updated += 1
+        if updated:
+            db.session.commit()
+            print(f"Updated country_code for {updated} existing teams.")
+        else:
+            print("Teams already exist, skipping seed (country_codes up to date).")
 
     print("Database initialized successfully!")

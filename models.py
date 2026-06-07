@@ -196,7 +196,18 @@ class Team(db.Model):
     group_name = db.Column(db.String(2), nullable=False)  # A-L
     zone = db.Column(db.String(1), nullable=True)  # A/B/C/D 淘汰赛分区
     flag_emoji = db.Column(db.String(10), nullable=True)
+    country_code = db.Column(db.String(10), nullable=True)  # ISO alpha-2 code for flag image CDN
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class SystemSetting(db.Model):
+    """Key-value settings for admin-controlled toggles (project open/close, etc.)"""
+    __tablename__ = "system_settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    value = db.Column(db.String(200), nullable=False, default="")
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 class DailyStar(db.Model):
