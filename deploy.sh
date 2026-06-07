@@ -106,6 +106,7 @@ systemctl restart nginx
 # Firewall
 ufw allow 22/tcp
 ufw allow 80/tcp
+ufw allow 443/tcp
 ufw --force enable
 
 echo ""
