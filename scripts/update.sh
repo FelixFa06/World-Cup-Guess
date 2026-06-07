@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Incremental update script for World Cup Guess
-# Run as root on the server: sudo bash update.sh
+# Run as root on the server: sudo bash scripts/update.sh
 #
 # Unlike deploy.sh, this does NOT regenerate secrets or reinitialize the database.
 # Player data in instance/guess.db is preserved.
@@ -27,7 +27,7 @@ pip install -r requirements.txt -q
 
 # 3. Run database migrations (safe to re-run, uses try/except)
 echo "[3/4] Running database migrations..."
-python init_db.py
+python scripts/init_db.py
 
 # 4. Restart service
 echo "[4/4] Restarting service..."

@@ -25,13 +25,18 @@
 
 ```
 world-cup-guess/
-├── app.py                 # Flask 应用主入口（页面路由 + API + CLI命令）
-├── config.py              # 配置文件（积分规则、管理员账号）
-├── models.py              # 数据库模型（8个表，SQLAlchemy ORM）
-├── scoring.py             # 算分引擎（纯函数，含大球加成和决赛翻倍逻辑）
-├── init_db.py             # 一键初始化数据库 + 创建管理员账号 + 迁移脚本
-├── test_e2e.py            # 端到端测试脚本（覆盖注册→预测→算分→排名）
-├── deploy.sh              # Ubuntu 22.04 一键部署脚本
+├── run.py                 # 应用入口
+├── src/                   # Python 源码包
+│   ├── __init__.py        # Flask 应用主入口（页面路由 + API + CLI命令）
+│   ├── config.py          # 配置文件（积分规则、管理员账号）
+│   ├── models.py          # 数据库模型（8个表，SQLAlchemy ORM）
+│   └── scoring.py         # 算分引擎（纯函数，含大球加成和决赛翻倍逻辑）
+├── scripts/               # 工具脚本
+│   ├── init_db.py         # 一键初始化数据库 + 创建管理员账号 + 迁移脚本
+│   ├── deploy.sh          # Ubuntu 22.04 一键部署脚本
+│   └── update.sh          # 增量更新脚本（保留玩家数据）
+├── tests/                 # 测试
+│   └── test_e2e.py        # 端到端测试脚本（覆盖注册→预测→算分→排名）
 ├── requirements.txt       # Python 依赖
 ├── CLAUDE.md              # AI 辅助开发文档
 ├── static/
@@ -168,10 +173,10 @@ world-cup-guess/
 pip install -r requirements.txt
 
 # 2. 初始化数据库
-python init_db.py
+python scripts/init_db.py
 
 # 3. 启动开发服务器
-python -m flask --app app run --host 0.0.0.0 --port 5000
+python run.py
 
 # 4. 打开浏览器访问
 # http://127.0.0.1:5000
@@ -188,13 +193,13 @@ python -m flask --app app run --host 0.0.0.0 --port 5000
 ```bash
 # 清空数据库并初始化
 rm -f instance/guess.db
-python init_db.py
+python scripts/init_db.py
 
 # 后台启动服务器
-python -m flask --app app run --host 0.0.0.0 --port 5000 &
+python run.py &
 
 # 运行测试
-PYTHONIOENCODING=utf-8 python test_e2e.py
+PYTHONIOENCODING=utf-8 python tests/test_e2e.py
 ```
 
 **Windows (PowerShell)：**
@@ -202,14 +207,14 @@ PYTHONIOENCODING=utf-8 python test_e2e.py
 ```powershell
 # 清空数据库并初始化
 Remove-Item -Force instance/guess.db
-python init_db.py
+python scripts/init_db.py
 
 # 启动服务器（新开一个 PowerShell 窗口，切换到项目目录后执行）
-python -m flask --app app run --host 0.0.0.0 --port 5000
+python run.py
 
 # 回到原窗口，设置编码并运行测试
 $env:PYTHONIOENCODING = "utf-8"
-python test_e2e.py
+python tests/test_e2e.py
 ```
 
 > 💡 **为什么需要两个终端？** Windows PowerShell 不支持 bash 的 `&` 后台运行语法，所以服务器和测试需要分别在两个窗口中运行。Linux/macOS 用户可以在一个终端中用 `&` 后台启动服务器。
@@ -243,7 +248,7 @@ git clone https://github.com/你的仓库/world-cup-guess.git /opt/world-cup-gue
 
 # 执行部署脚本
 cd /opt/world-cup-guess
-sudo bash deploy.sh
+sudo bash scripts/deploy.sh
 ```
 
 `deploy.sh` 自动完成：
@@ -276,8 +281,8 @@ cd /opt/world-cup-guess && source venv/bin/activate
 
 ```bash
 python3 << 'EOF'
-from app import create_app
-from models import User, db
+from src import create_app
+from src.models import User, db
 app = create_app()
 with app.app_context():
     admin = User.query.filter_by(nickname='admin').first()
@@ -293,7 +298,7 @@ EOF
 
 ```bash
 cd /opt/world-cup-guess
-sudo bash update.sh
+sudo bash scripts/update.sh
 ```
 
 `update.sh` 自动完成：

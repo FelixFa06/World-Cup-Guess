@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # One-click deploy script for World Cup Guess on Ubuntu 22.04
-# Run as root: sudo bash deploy.sh
+# Run as root: sudo bash scripts/deploy.sh
 #
 
 set -e
@@ -24,7 +24,7 @@ mkdir -p $PROJECT_DIR
 
 # 3. Copy project files (assuming script runs from project root)
 echo "[3/7] Copying project files..."
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [ "$SCRIPT_DIR" != "$PROJECT_DIR" ]; then
     cp -r "$SCRIPT_DIR"/* $PROJECT_DIR/
 fi
@@ -45,7 +45,7 @@ pip install -r $PROJECT_DIR/requirements.txt
 echo "[6/7] Initializing database..."
 cd $PROJECT_DIR
 source $VENV_DIR/bin/activate
-python3 init_db.py
+python3 scripts/init_db.py
 
 # 7. Setup systemd service
 echo "[7/7] Setting up systemd service..."
@@ -60,7 +60,7 @@ Group=www-data
 WorkingDirectory=$PROJECT_DIR
 Environment="SECRET_KEY=$SECRET_KEY"
 Environment="ADMIN_PASSWORD=$ADMIN_PASSWORD"
-ExecStart=$VENV_DIR/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 app:app
+ExecStart=$VENV_DIR/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 run:app
 Restart=always
 
 [Install]
@@ -114,7 +114,7 @@ echo "=== Deployment Complete! ==="
 echo ""
 echo "Access your app at: http://$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
 echo ""
-echo "Admin nickname: $(grep ADMIN_NICKNAME $PROJECT_DIR/config.py | head -1 | cut -d'"' -f2)"
+echo "Admin nickname: $(grep ADMIN_NICKNAME $PROJECT_DIR/src/config.py | head -1 | cut -d'"' -f2)"
 echo "Admin password: $ADMIN_PASSWORD"
 echo ""
 echo "⚠️  Save the admin password now — it will not be shown again!"

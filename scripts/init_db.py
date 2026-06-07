@@ -1,7 +1,10 @@
 """Initialize database with tables, admin user, and 48 teams."""
-from app import create_app
-from models import db, User, Team, SystemSetting
-from config import Config
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from src import create_app
+from src.models import db, User, Team, SystemSetting
+from src.config import Config
 from sqlalchemy import text
 
 app = create_app()

@@ -15,9 +15,9 @@ from flask_login import (
 )
 from werkzeug.security import check_password_hash
 
-from config import Config
-from models import db, User, Match, Project1Pick, Project2Pick, GroupStagePick, MatchPrediction, DailyStar, Team, SystemSetting
-from scoring import (
+from .config import Config
+from .models import db, User, Match, Project1Pick, Project2Pick, GroupStagePick, MatchPrediction, DailyStar, Team, SystemSetting
+from .scoring import (
     score_match_prediction, score_project1, score_project2, score_group_stage,
     calculate_daily_stars, get_leaderboard, snapshot_leaderboard_ranks,
     normalize_team_name,
@@ -25,11 +25,12 @@ from scoring import (
 
 
 def create_app():
-    app = Flask(__name__)
+    instance_path = os.path.join(os.path.dirname(__file__), '..', 'instance')
+    app = Flask(__name__, instance_path=os.path.abspath(instance_path))
     app.config.from_object(Config)
 
     # Ensure instance folder exists
-    os.makedirs(os.path.join(app.root_path, "instance"), exist_ok=True)
+    os.makedirs(app.instance_path, exist_ok=True)
 
     db.init_app(app)
 
@@ -1351,9 +1352,3 @@ def create_app():
         print("Database initialized.")
 
     return app
-
-
-app = create_app()
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)

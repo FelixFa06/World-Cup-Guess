@@ -56,7 +56,7 @@ def score_project1(pick, real_champion, real_golden_boot, real_golden_ball,
     Returns:
         int: total points
     """
-    from config import Config
+    from .config import Config
 
     total = 0
     if real_champion and pick.champion_team == real_champion:
@@ -84,7 +84,7 @@ def score_project2(pick, semifinal_teams):
     Returns:
         int: total points
     """
-    from config import Config
+    from .config import Config
 
     if not semifinal_teams or len(semifinal_teams) < 4:
         return 0
@@ -111,7 +111,7 @@ def score_group_stage(pick, actual_first, actual_second):
     Returns:
         int: 2 if both correct, 0 otherwise
     """
-    from config import Config
+    from .config import Config
 
     if not actual_first or not actual_second:
         return 0
@@ -136,7 +136,7 @@ def calculate_daily_stars(db, match_date):
     Returns:
         list of DailyStar objects created
     """
-    from models import User, Match, MatchPrediction, DailyStar
+    from .models import User, Match, MatchPrediction, DailyStar
     from datetime import datetime, timezone
 
     # Find all closed matches on this date
@@ -195,7 +195,7 @@ def calculate_daily_stars(db, match_date):
 def snapshot_leaderboard_ranks(db):
     """Copy current ranks to users.previous_rank before scoring changes."""
     leaderboard = get_leaderboard()
-    from models import User
+    from .models import User
     try:
         for entry in leaderboard:
             user = User.query.get(entry["user_id"])
@@ -213,7 +213,7 @@ def get_leaderboard():
     Returns:
         list of dicts with user info and scores
     """
-    from models import User
+    from .models import User
 
     users = User.query.filter_by(is_admin=False).all()
     leaderboard = []
