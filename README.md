@@ -287,6 +287,23 @@ with app.app_context():
 EOF
 ```
 
+### 6. 更新代码（保留玩家数据）
+
+后续功能更新时，**不要重新运行 `deploy.sh`**（它会重新生成密钥）。使用增量更新脚本：
+
+```bash
+cd /opt/world-cup-guess
+sudo bash update.sh
+```
+
+`update.sh` 自动完成：
+- 拉取最新代码（`git pull`）
+- 安装新依赖
+- 执行数据库迁移（安全可重复）
+- 重启服务
+
+不会覆盖 `instance/guess.db`，玩家数据完好。
+
 ### 费用参考
 
 | 项目 | 费用 |
