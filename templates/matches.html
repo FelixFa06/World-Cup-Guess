@@ -19,7 +19,7 @@
                 <span class="status-dot status-{{ match.status }}"></span>
                 <span class="round-badge {% if match.is_final %}final{% endif %}">{{ match.round_name }}</span>
             </div>
-            <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
+            <span class="match-teams">{{ match.team_a | team_flag | safe }} vs {{ match.team_b | team_flag | safe }}</span>
             <div>
                 {% if match.status == 'closed' %}
                 <span class="match-score">{{ match.score_a }} - {{ match.score_b }}</span>

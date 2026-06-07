@@ -72,7 +72,7 @@
     {% for match in upcoming %}
     <div class="match-card">
         <span class="round-badge {% if match.is_final %}final{% endif %}">{{ match.round_name }}</span>
-        <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
+        <span class="match-teams">{{ match.team_a | team_flag | safe }} vs {{ match.team_b | team_flag | safe }}</span>
         <span class="match-info">{{ match.match_time.strftime('%m/%d %H:%M') }}</span>
     </div>
     {% endfor %}
@@ -88,7 +88,7 @@
     {% for match in recent %}
     <div class="match-card">
         <span class="round-badge {% if match.is_final %}final{% endif %}">{{ match.round_name }}</span>
-        <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
+        <span class="match-teams">{{ match.team_a | team_flag | safe }} vs {{ match.team_b | team_flag | safe }}</span>
         <span class="match-score">{{ match.score_a }} - {{ match.score_b }}</span>
         <span class="match-info">{{ match.match_time.strftime('%m/%d') }}</span>
     </div>

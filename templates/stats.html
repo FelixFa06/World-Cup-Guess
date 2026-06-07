@@ -68,25 +68,17 @@
     {% else %}
         <p style="color:#888;font-size:0.85rem;">共 {{ p2_picks|length }} 位群友提交，满分 12 分</p>
 
-        <!-- Group stats: show top consensus per group -->
-        <div class="grid" style="margin-top:1rem;">
+        <!-- Group stats: show top consensus per group (2 rows × 6 cols) -->
+        <div class="group-stats-grid">
             {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
             {% set gdata = p2_group_data.get(g, {}) %}
-            <div style="border:1px solid #ddd;border-radius:8px;padding:0.5rem;">
-                <strong>{{ g }}组</strong>
-                <div style="font-size:0.8rem;">
-                    <div>🥇 第一热门:
-                        {% set first_sorted = gdata.first | dictsort(reverse=true, by='value') %}
-                        {% if first_sorted %}
-                        <strong>{{ first_sorted[0][0] }}</strong> ({{ first_sorted[0][1] }}人)
-                        {% else %}-{% endif %}
-                    </div>
-                    <div>🥈 第二热门:
-                        {% set second_sorted = gdata.second | dictsort(reverse=true, by='value') %}
-                        {% if second_sorted %}
-                        <strong>{{ second_sorted[0][0] }}</strong> ({{ second_sorted[0][1] }}人)
-                        {% else %}-{% endif %}
-                    </div>
+            <div style="border:1px solid #ddd;border-radius:8px;padding:0.6rem 0.5rem;text-align:center;">
+                <strong style="font-size:1rem;">{{ g }}组</strong>
+                <div style="font-size:0.8rem;margin-top:0.25rem;">
+                    {% set first_sorted = gdata.first | dictsort(reverse=true, by='value') %}
+                    {% set second_sorted = gdata.second | dictsort(reverse=true, by='value') %}
+                    <div>🥇 {% if first_sorted %}<strong>{{ first_sorted[0][0] | team_flag | safe }}</strong><br><span style="color:#888;">{{ first_sorted[0][1] }}人</span>{% else %}-{% endif %}</div>
+                    <div style="margin-top:0.15rem;">🥈 {% if second_sorted %}<strong>{{ second_sorted[0][0] | team_flag | safe }}</strong><br><span style="color:#888;">{{ second_sorted[0][1] }}人</span>{% else %}-{% endif %}</div>
                 </div>
             </div>
             {% endfor %}
@@ -112,7 +104,7 @@
                             <td><strong>{{ u.nickname }}</strong></td>
                             {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
                             {% set gp = u.groups.get(g, {}) %}
-                            <td>{{ gp.get('first', '-')[:3] }} / {{ gp.get('second', '-')[:3] }}</td>
+                            <td>{{ gp.get('first', '-') | team_flag | safe }} / {{ gp.get('second', '-') | team_flag | safe }}</td>
                             {% endfor %}
                             <td><strong>{{ u.groups.values() | sum(attribute='score') }}</strong></td>
                         </tr>

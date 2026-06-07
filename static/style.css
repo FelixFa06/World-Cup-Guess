@@ -320,6 +320,26 @@ footer {
     margin: 1rem auto;
 }
 
+/* Stats page: P2 group grid (6 cols desktop, 3 cols tablet, 2 cols mobile) */
+.group-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 992px) {
+    .group-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .group-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 /* Mobile tweaks */
 @media (max-width: 768px) {
     nav ul {

@@ -63,6 +63,18 @@ def create_app():
             f' onerror="this.style.display=\'none\'">'
         )
 
+    @app.template_filter("team_flag")
+    def team_flag_filter(team_name):
+        """Render a team name with its flag image.
+        Looks up the team by name in the DB (cached per request via SQLAlchemy).
+        Usage: {{ match.team_a | team_flag | safe }}"""
+        if not team_name:
+            return ""
+        team = Team.query.filter_by(name=team_name).first()
+        if team and team.country_code:
+            return flag_img_filter(team.country_code) + " " + team_name
+        return team_name
+
     # ── Helper: get/update system settings ──
     def _get_setting(key, default=""):
         s = SystemSetting.query.filter_by(key=key).first()

@@ -132,7 +132,7 @@
                 <tr>
                     <td>{{ m.match_order }}</td>
                     <td><span class="round-badge {% if m.is_final %}final{% endif %}">{{ m.round_name }}</span></td>
-                    <td>{{ m.team_a }} vs {{ m.team_b }}</td>
+                    <td>{{ m.team_a | team_flag | safe }} vs {{ m.team_b | team_flag | safe }}</td>
                     <td>{{ m.match_time.strftime('%m/%d %H:%M') }}</td>
                     <td>{% if m.score_a is not none %}{{ m.score_a }}-{{ m.score_b }}{% else %}-{% endif %}</td>
                     <td>

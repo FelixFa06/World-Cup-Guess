@@ -10,7 +10,7 @@
     {% if p1_deadline_passed %}
         <p style="color:#d32f2f;">⛔ 项目一已截止（管理员已关闭）</p>
         {% if p1_pick %}
-        <p>你的选择：🏆 <strong>{{ p1_pick.champion_team }}</strong> | 👟 <strong>{{ p1_pick.golden_boot_player }}</strong> | 🏅 <strong>{{ p1_pick.golden_ball_player }}</strong> | 🧤 <strong>{{ p1_pick.golden_glove_player }}</strong> | 🌟 <strong>{{ p1_pick.best_young_player }}</strong></p>
+        <p>你的选择：🏆 <strong>{{ p1_pick.champion_team | team_flag | safe }}</strong> | 👟 <strong>{{ p1_pick.golden_boot_player }}</strong> | 🏅 <strong>{{ p1_pick.golden_ball_player }}</strong> | 🧤 <strong>{{ p1_pick.golden_glove_player }}</strong> | 🌟 <strong>{{ p1_pick.best_young_player }}</strong></p>
         {% endif %}
     {% else %}
         <form id="p1-form">
@@ -95,12 +95,12 @@
     {% if not p3_open %}
         <p style="color:#d32f2f;">⛔ 项目三已被管理员截止</p>
         {% if p3_pick %}
-        <p>你的选择：A区 <strong>{{ p3_pick.zone_a_team }}</strong> | B区 <strong>{{ p3_pick.zone_b_team }}</strong> | C区 <strong>{{ p3_pick.zone_c_team }}</strong> | D区 <strong>{{ p3_pick.zone_d_team }}</strong></p>
+        <p>你的选择：A区 <strong>{{ p3_pick.zone_a_team | team_flag | safe }}</strong> | B区 <strong>{{ p3_pick.zone_b_team | team_flag | safe }}</strong> | C区 <strong>{{ p3_pick.zone_c_team | team_flag | safe }}</strong> | D区 <strong>{{ p3_pick.zone_d_team | team_flag | safe }}</strong></p>
         {% endif %}
     {% elif p3_deadline_passed %}
         <p style="color:#d32f2f;">⛔ 项目三已截止（管理员已关闭）</p>
         {% if p3_pick %}
-        <p>你的选择：A区 <strong>{{ p3_pick.zone_a_team }}</strong> | B区 <strong>{{ p3_pick.zone_b_team }}</strong> | C区 <strong>{{ p3_pick.zone_c_team }}</strong> | D区 <strong>{{ p3_pick.zone_d_team }}</strong></p>
+        <p>你的选择：A区 <strong>{{ p3_pick.zone_a_team | team_flag | safe }}</strong> | B区 <strong>{{ p3_pick.zone_b_team | team_flag | safe }}</strong> | C区 <strong>{{ p3_pick.zone_c_team | team_flag | safe }}</strong> | D区 <strong>{{ p3_pick.zone_d_team | team_flag | safe }}</strong></p>
         {% endif %}
     {% else %}
         <p style="color:#888;font-size:0.9rem;">从每个 1/4 分区中选一支可能进入四强的球队（每区8选1）。四支球队不能重复。</p>
@@ -158,7 +158,7 @@
         {% set pred = user_predictions.get(match.id) %}
         <div class="match-card">
             <span class="round-badge {% if match.is_final %}final{% endif %}">{{ match.round_name }}</span>
-            <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
+            <span class="match-teams">{{ match.team_a | team_flag | safe }} vs {{ match.team_b | team_flag | safe }}</span>
             <span class="match-info">{{ match.match_time.strftime('%m/%d %H:%M') }}</span>
             <div class="prediction-input">
                 <input type="number" id="score-a-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_a if pred else '' }}" placeholder="" style="width:65px;">
