@@ -16,7 +16,7 @@
         <form id="p1-form">
             <div class="grid">
                 <div>
-                    <label for="p1-champion">🏆 冠军球队（6分）</label>
+                    <label for="p1-champion">🏆 冠军球队（8分）</label>
                     <input type="text" id="p1-champion" placeholder="例如：阿根廷" value="{{ p1_pick.champion_team if p1_pick else '' }}" required>
                 </div>
                 <div>
@@ -49,7 +49,7 @@
 <!-- Project 2: Group Stage Ranking -->
 <div class="card">
     <div class="card-header">📋 项目二：小组赛排名预测</div>
-    <p style="color:#888;font-size:0.9rem;">预测每个小组的第一名和第二名。第一和第二<strong>全部猜对且顺序正确</strong>才得分，每组 <strong>2 分</strong>，满分 <strong>24 分</strong>。</p>
+    <p style="color:#888;font-size:0.9rem;">预测每个小组的第一名和第二名。第一和第二<strong>全部猜对且顺序正确</strong>才得分，每组 <strong>1 分</strong>，满分 <strong>12 分</strong>。</p>
     {% if p2_deadline_passed %}
         <p style="color:#d32f2f;">⛔ 项目二已截止（小组赛已开始）</p>
     {% else %}

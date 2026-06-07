@@ -256,7 +256,7 @@ except Exception as e:
 
 # Verify scores via rankings page
 print("  Verifying P2 scores...")
-print("    - 玩家A: all 12 groups correct → 24 pts")
+print("    - 玩家A: all 12 groups correct → 12 pts")
 print("    - 玩家B: all 12 groups wrong 2nd place → 0 pts")
 try:
     resp = urllib.request.urlopen(urllib.request.Request(BASE + "/rankings"))
@@ -333,7 +333,7 @@ try:
                     "golden_glove": "库尔图瓦", "best_young_player": "穆西亚拉"},
                    cookies=admin_cookies)
     check("P1 scored", b.get("ok") is True, b.get("msg", ""))
-    # 玩家A: champion 6 + boot 3 + ball 0 + glove 3 + young 0 = 12 pts for P1
+    # 玩家A: champion 8 + boot 3 + ball 0 + glove 3 + young 0 = 14 pts for P1
 except Exception as e:
     check("Project 1 scoring", False, str(e))
 
@@ -342,7 +342,7 @@ print("\n🎯 Test 11: Final Scoring Verification")
 print("  Expected scores:")
 print("    玩家C: P2=0 (didn't submit), P4=5 (exact big match) → Total=5")
 print("    玩家B: P2=0 (all wrong 2nd), P4=1 (correct result) → Total=1")
-print("    玩家A: P2=24 (all correct), P4=0+3=3, P1=12 (6+3+0+3+0) → Total=39")
+print("    玩家A: P2=12 (all correct), P4=0+3=3, P1=14 (8+3+0+3+0) → Total=29")
 
 # ── Summary ──
 print("\n" + "=" * 60)

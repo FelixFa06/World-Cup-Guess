@@ -2,10 +2,10 @@
 Scoring engine for World Cup Guess game.
 
 Rules:
-  Project 1: Champion (6pts) + Golden Boot (3pts) + Golden Ball (3pts)
-              + Golden Glove (3pts) + Best Young Player (3pts), max 18pts
+  Project 1: Champion (8pts) + Golden Boot (3pts) + Golden Ball (3pts)
+              + Golden Glove (3pts) + Best Young Player (3pts), max 20pts
   Project 2: Group stage ranking — 12 groups, predict 1st & 2nd,
-              both correct + correct order → 2pts per group, max 24pts
+              both correct + correct order → 1pt per group, max 12pts
   Project 3: 4 zones, pick 1 team each, 2pts per correct, max 8pts
   Project 4: Exact score = 3pts, correct result = 1pt.
               Big match (goals>=5 or diff>=3): exact = 5pts.
@@ -101,7 +101,7 @@ def score_group_stage(pick, actual_first, actual_second):
     Score a single group stage prediction.
 
     Both first AND second place must be correct (order matters).
-    Returns 2 points if both are correct, 0 otherwise.
+    Returns 1 point if both are correct, 0 otherwise.
 
     Args:
         pick: GroupStagePick object

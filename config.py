@@ -22,16 +22,16 @@ class Config:
 
     # Scoring rules
     # Project 1: Champion + 4 individual awards (Golden Boot/Ball/Glove, Best Young Player)
-    P1_CHAMPION_PTS = 6
+    P1_CHAMPION_PTS = 8
     P1_GOLDEN_BOOT_PTS = 3
     P1_GOLDEN_BALL_PTS = 3
     P1_GOLDEN_GLOVE_PTS = 3
     P1_BEST_YOUNG_PLAYER_PTS = 3
-    P1_MAX_PTS = 18  # 6 + 3*4
+    P1_MAX_PTS = 20  # 8 + 3*4
 
-    # Project 2: Group stage ranking (12 groups, 2pts per group)
-    P2_GROUP_PTS = 2
-    P2_MAX_PTS = 24  # 12 groups x 2 pts
+    # Project 2: Group stage ranking (12 groups, 1pt per group)
+    P2_GROUP_PTS = 1
+    P2_MAX_PTS = 12  # 12 groups x 1 pt
 
     # Project 3: Semifinal predictions (4 zones, was P2)
     P3_PER_TEAM_PTS = 2
