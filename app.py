@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timezone, date as date_type
+from datetime import datetime, timezone, timedelta, date as date_type
 
 def utcnow():
     """Return naive UTC datetime for SQLite compatibility."""
@@ -614,8 +614,9 @@ def create_app():
         if match.status not in ("open", "upcoming"):
             return jsonify({"ok": False, "msg": "该场比赛已截止预测"}), 400
 
-        # Check kickoff time
-        if utcnow() >= match.match_time.replace(tzinfo=None):
+        # Check kickoff time (convert UTC to Beijing time for comparison)
+        beijing_now = utcnow() + timedelta(hours=Config.BEIJING_UTC_OFFSET_HOURS)
+        if beijing_now >= match.match_time:
             return jsonify({"ok": False, "msg": "比赛已开始，不能提交预测"}), 400
 
         data = request.get_json()
