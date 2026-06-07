@@ -122,9 +122,9 @@
             <span class="match-teams">{{ match.team_a }} vs {{ match.team_b }}</span>
             <span class="match-info">{{ match.match_time.strftime('%m/%d %H:%M') }}</span>
             <div class="prediction-input">
-                <input type="number" id="score-a-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_a if pred else '' }}" placeholder="0" style="width:65px;">
+                <input type="number" id="score-a-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_a if pred else '' }}" placeholder="" style="width:65px;">
                 <span>-</span>
-                <input type="number" id="score-b-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_b if pred else '' }}" placeholder="0" style="width:65px;">
+                <input type="number" id="score-b-{{ match.id }}" min="0" max="99" value="{{ pred.pred_score_b if pred else '' }}" placeholder="" style="width:65px;">
                 <button onclick="submitMatchPrediction({{ match.id }}, this)" style="font-size:0.85rem;padding:0.25rem 0.5rem;">保存</button>
             </div>
             <span id="match-msg-{{ match.id }}" style="font-size:0.8rem;color:var(--primary);"></span>
