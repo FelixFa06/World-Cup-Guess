@@ -295,6 +295,10 @@ def create_app():
         team_names = [t.name for t in Team.query.all()]
         champion = normalize_team_name(champion, team_names)
 
+        # Validate champion is a real team
+        if champion not in team_names:
+            return jsonify({"ok": False, "msg": f"「{champion}」不是有效球队，请从列表中选择"}), 400
+
         pick = Project1Pick.query.filter_by(user_id=current_user.id).first()
         if pick:
             pick.champion_team = champion
@@ -339,8 +343,10 @@ def create_app():
         if group_names != expected:
             return jsonify({"ok": False, "msg": "小组名称必须为A-L共12个"}), 400
 
-        # Build team name lookup for normalization
-        team_names = [t.name for t in Team.query.all()]
+        # Build team name lookup for normalization + group validation
+        all_teams = Team.query.all()
+        team_names = [t.name for t in all_teams]
+        team_group_map = {t.name: t.group_name for t in all_teams}  # canonical name → group
 
         for g in groups:
             group_name = g.get("group_name", "").strip().upper()
@@ -356,6 +362,13 @@ def create_app():
             # Normalize team names
             first = normalize_team_name(first, team_names)
             second = normalize_team_name(second, team_names)
+
+            # Validate teams exist and belong to the correct group
+            for label, val in [("第一名", first), ("第二名", second)]:
+                if val not in team_names:
+                    return jsonify({"ok": False, "msg": f"「{val}」不是有效球队（{group_name}组{label}）"}), 400
+                if team_group_map.get(val) != group_name:
+                    return jsonify({"ok": False, "msg": f"「{val}」不属于{group_name}组，请从{group_name}组球队中选择"}), 400
 
             # Upsert this group's pick
             pick = GroupStagePick.query.filter_by(
@@ -400,11 +413,21 @@ def create_app():
             return jsonify({"ok": False, "msg": "四个分区的选择不能为空"}), 400
 
         # Normalize team names
-        team_names = [t.name for t in Team.query.all()]
+        all_teams = Team.query.all()
+        team_names = [t.name for t in all_teams]
+        team_zone_map = {t.name: t.zone for t in all_teams}  # canonical name → zone
         zone_a = normalize_team_name(zone_a, team_names)
         zone_b = normalize_team_name(zone_b, team_names)
         zone_c = normalize_team_name(zone_c, team_names)
         zone_d = normalize_team_name(zone_d, team_names)
+
+        # Validate each zone pick is a real team AND belongs to the correct zone
+        for label, zone_key, val in [("A区", "A", zone_a), ("B区", "B", zone_b),
+                                      ("C区", "C", zone_c), ("D区", "D", zone_d)]:
+            if val not in team_names:
+                return jsonify({"ok": False, "msg": f"「{val}」不是有效球队（{label}），请从列表中选择"}), 400
+            if team_zone_map.get(val) != zone_key:
+                return jsonify({"ok": False, "msg": f"「{val}」不属于{label}，请从{label}球队列表中选择"}), 400
 
         if len({zone_a, zone_b, zone_c, zone_d}) < 4:
             return jsonify({"ok": False, "msg": "四个分区不能选重复球队"}), 400
@@ -491,6 +514,14 @@ def create_app():
 
         if not all([round_name, team_a, team_b, match_time_str]):
             return jsonify({"ok": False, "msg": "请填写所有字段"}), 400
+
+        # Validate team names
+        team_names = [t.name for t in Team.query.all()]
+        team_a = normalize_team_name(team_a, team_names)
+        team_b = normalize_team_name(team_b, team_names)
+        for label, val in [("主队", team_a), ("客队", team_b)]:
+            if val not in team_names:
+                return jsonify({"ok": False, "msg": f"「{val}」不是有效球队（{label}），请从列表中选择"}), 400
 
         try:
             match_time = datetime.strptime(match_time_str, "%Y-%m-%dT%H:%M")
@@ -619,6 +650,12 @@ def create_app():
         real_golden_glove = data.get("golden_glove", "").strip()
         real_best_young_player = data.get("best_young_player", "").strip()
 
+        # Validate champion is a real team
+        team_names = [t.name for t in Team.query.all()]
+        real_champion = normalize_team_name(real_champion, team_names)
+        if real_champion not in team_names:
+            return jsonify({"ok": False, "msg": f"「{real_champion}」不是有效球队，请从列表中选择"}), 400
+
         # Snapshot ranks before scoring
         snapshot_leaderboard_ranks(db)
 
@@ -646,6 +683,11 @@ def create_app():
         if not groups or len(groups) != 12:
             return jsonify({"ok": False, "msg": "请提供全部12个小组的结果"}), 400
 
+        # Build team lookup for validation
+        all_teams = Team.query.all()
+        team_names = [t.name for t in all_teams]
+        team_group_map = {t.name: t.group_name for t in all_teams}
+
         # Build lookup: group_name → {first, second}
         results = {}
         for g in groups:
@@ -654,6 +696,16 @@ def create_app():
             second = g.get("second_place", "").strip()
             if not gn or not first or not second:
                 return jsonify({"ok": False, "msg": "每个小组需提供组名、第一和第二名"}), 400
+
+            first = normalize_team_name(first, team_names)
+            second = normalize_team_name(second, team_names)
+
+            for label, val in [("第一名", first), ("第二名", second)]:
+                if val not in team_names:
+                    return jsonify({"ok": False, "msg": f"「{val}」不是有效球队（{gn}组{label}）"}), 400
+                if team_group_map.get(val) != gn:
+                    return jsonify({"ok": False, "msg": f"「{val}」不属于{gn}组，请从{gn}组球队中选择"}), 400
+
             results[gn] = (first, second)
 
         # Snapshot ranks before scoring
@@ -682,6 +734,22 @@ def create_app():
 
         if len(semifinal_teams) != 4:
             return jsonify({"ok": False, "msg": "请提供4支四强球队"}), 400
+
+        # Normalize and validate team names (each slot maps to zone A/B/C/D)
+        all_teams = Team.query.all()
+        team_names = [t.name for t in all_teams]
+        team_zone_map = {t.name: t.zone for t in all_teams}
+        zone_labels = ["A区", "B区", "C区", "D区"]
+        zone_keys = ["A", "B", "C", "D"]
+        normalized = []
+        for i, t in enumerate(semifinal_teams):
+            nt = normalize_team_name(t.strip(), team_names)
+            if nt not in team_names:
+                return jsonify({"ok": False, "msg": f"「{t}」不是有效球队，请从列表中选择"}), 400
+            if team_zone_map.get(nt) != zone_keys[i]:
+                return jsonify({"ok": False, "msg": f"「{nt}」不属于{zone_labels[i]}，请从{zone_labels[i]}球队中选择"}), 400
+            normalized.append(nt)
+        semifinal_teams = normalized
 
         # Snapshot ranks before scoring
         snapshot_leaderboard_ranks(db)
@@ -890,16 +958,27 @@ def create_app():
         if not pick:
             return jsonify({"ok": False, "msg": "该用户尚未提交项目三，无法编辑"}), 400
 
-        team_names = [t.name for t in Team.query.all()]
+        all_teams = Team.query.all()
+        team_names = [t.name for t in all_teams]
+        team_zone_map = {t.name: t.zone for t in all_teams}
 
+        zone_updates = {}
         if "zone_a" in data:
-            pick.zone_a_team = normalize_team_name(data["zone_a"].strip(), team_names)
+            zone_updates["A"] = ("zone_a", "A区", data["zone_a"].strip())
         if "zone_b" in data:
-            pick.zone_b_team = normalize_team_name(data["zone_b"].strip(), team_names)
+            zone_updates["B"] = ("zone_b", "B区", data["zone_b"].strip())
         if "zone_c" in data:
-            pick.zone_c_team = normalize_team_name(data["zone_c"].strip(), team_names)
+            zone_updates["C"] = ("zone_c", "C区", data["zone_c"].strip())
         if "zone_d" in data:
-            pick.zone_d_team = normalize_team_name(data["zone_d"].strip(), team_names)
+            zone_updates["D"] = ("zone_d", "D区", data["zone_d"].strip())
+
+        for zone_key, (attr, label, val) in zone_updates.items():
+            val = normalize_team_name(val, team_names)
+            if val not in team_names:
+                return jsonify({"ok": False, "msg": f"「{val}」不是有效球队（{label}）"}), 400
+            if team_zone_map.get(val) != zone_key:
+                return jsonify({"ok": False, "msg": f"「{val}」不属于{label}，请从{label}球队列表中选择"}), 400
+            setattr(pick, attr + "_team", val)
 
         pick.updated_at = utcnow()
         db.session.commit()

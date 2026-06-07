@@ -120,10 +120,10 @@ except Exception as e:
 # ── Test 3b: Delete match ──
 print("\n🗑 Test 3b: Delete Match")
 try:
-    # Add a match that we'll delete
+    # Add a match that we'll delete (use real team names)
     s, b, _ = req("POST", "/api/admin/match",
                    {"round": "QF", "match_order": 99,
-                    "team_a": "测试队A", "team_b": "测试队B",
+                    "team_a": "德国", "team_b": "荷兰",
                     "match_time": "2026-07-15T18:00"},
                    cookies=admin_cookies)
     check("Add match to delete", b.get("ok") is True, b.get("msg", ""))
@@ -190,19 +190,65 @@ try:
                    cookies=user_cookies)
     check("P1 with canonical name accepted", b.get("ok") is True, b.get("msg", ""))
 
-    # Submit P2 with canonical names
-    test_groups_norm = [{"group_name": g, "first_place": f"Team-{g}-1ST",
-                          "second_place": f"Team-{g}-2ND"} for g in "ABCDEFGHIJKL"]
+    # Submit P2 with real team names from correct groups
+    p2_real = {
+        "A": ("墨西哥", "南非"), "B": ("加拿大", "波黑"),
+        "C": ("巴西", "摩洛哥"), "D": ("美国", "巴拉圭"),
+        "E": ("德国", "库拉索"), "F": ("荷兰", "日本"),
+        "G": ("比利时", "埃及"), "H": ("西班牙", "佛得角"),
+        "I": ("法国", "塞内加尔"), "J": ("阿根廷", "阿尔及利亚"),
+        "K": ("葡萄牙", "刚果(金)"), "L": ("英格兰", "克罗地亚"),
+    }
+    test_groups_real = [{"group_name": g, "first_place": p[0], "second_place": p[1]}
+                         for g, p in p2_real.items()]
     s, b, _ = req("POST", "/api/predict/p2",
-                   {"groups": test_groups_norm},
+                   {"groups": test_groups_real},
                    cookies=user_cookies)
-    check("P2 submitted with canonical names", b.get("ok") is True, b.get("msg", ""))
+    check("P2 submitted with real team names", b.get("ok") is True, b.get("msg", ""))
+
+    # Submit P2 with invalid team → should be rejected
+    s, b, _ = req("POST", "/api/predict/p2",
+                   {"groups": [{"group_name": g, "first_place": "火星队", "second_place": "月球队"}
+                               for g in "ABCDEFGHIJKL"]},
+                   cookies=user_cookies)
+    check("P2 with fake team rejected", b.get("ok") is False,
+          f"msg: {b.get('msg', '')}")
+
+    # Submit P2 with team in wrong group → should be rejected
+    s, b, _ = req("POST", "/api/predict/p2",
+                   {"groups": [{"group_name": g, "first_place": p[0], "second_place": p[1]}
+                               for g, p in p2_real.items()]},
+                   cookies=user_cookies)
+    # Fix: put 法国 (group I) into group A
+    bad_groups = [{"group_name": g, "first_place": p[0], "second_place": p[1]}
+                   for g, p in p2_real.items()]
+    bad_groups[0] = {"group_name": "A", "first_place": "法国", "second_place": "巴西"}
+    s, b, _ = req("POST", "/api/predict/p2",
+                   {"groups": bad_groups},
+                   cookies=user_cookies)
+    check("P2 wrong-group team rejected", b.get("ok") is False,
+          f"msg: {b.get('msg', '')}")
+
+    # Submit P1 with invalid champion → should be rejected
+    s, b, _ = req("POST", "/api/predict/p1",
+                   {"champion": "不存在的球队", "golden_boot": "某人", "golden_ball": "某人",
+                    "golden_glove": "某人", "best_young_player": "某人"},
+                   cookies=user_cookies)
+    check("P1 with fake champion rejected", b.get("ok") is False,
+          f"msg: {b.get('msg', '')}")
 
     # Submit P3 with canonical team names
     s, b, _ = req("POST", "/api/predict/p3",
                    {"zone_a": "德国", "zone_b": "美国", "zone_c": "巴西", "zone_d": "阿根廷"},
                    cookies=user_cookies)
     check("P3 with canonical names accepted", b.get("ok") is True, b.get("msg", ""))
+
+    # Submit P3 with invalid team → should be rejected
+    s, b, _ = req("POST", "/api/predict/p3",
+                   {"zone_a": "火星队", "zone_b": "美国", "zone_c": "巴西", "zone_d": "阿根廷"},
+                   cookies=user_cookies)
+    check("P3 with fake team rejected", b.get("ok") is False,
+          f"msg: {b.get('msg', '')}")
 except Exception as e:
     check("Teams & normalization", False, str(e))
 
@@ -236,9 +282,9 @@ try:
     check("Admin views P2 of 玩家A", b.get("ok") is True and len(b.get("groups", [])) > 0,
           f"groups count: {len(b.get('groups', []))}")
 
-    # Admin edits 玩家A's P2
+    # Admin edits 玩家A's P2 (using real teams from group A)
     s, b, _ = req("POST", f"/api/admin/user/{user_a_id}/p2",
-                   {"groups": [{"group_name": "A", "first_place": "法国", "second_place": "巴西"}]},
+                   {"groups": [{"group_name": "A", "first_place": "韩国", "second_place": "捷克"}]},
                    cookies=admin_cookies)
     check("Admin edits 玩家A P2", b.get("ok") is True, b.get("msg", ""))
 
@@ -247,11 +293,18 @@ try:
     check("Admin views P3 of 玩家A", b.get("ok") is True and b.get("pick") is not None,
           f"pick={'present' if b.get('pick') else 'none'}")
 
-    # Admin edits 玩家A's P3
+    # Admin edits 玩家A's P3 (teams must belong to correct zones)
     s, b, _ = req("POST", f"/api/admin/user/{user_a_id}/p3",
-                   {"zone_a": "法国", "zone_b": "阿根廷"},
+                   {"zone_a": "法国", "zone_b": "西班牙"},
                    cookies=admin_cookies)
     check("Admin edits 玩家A P3", b.get("ok") is True, b.get("msg", ""))
+
+    # Admin tries P3 with team in wrong zone → should be rejected
+    s, b, _ = req("POST", f"/api/admin/user/{user_a_id}/p3",
+                   {"zone_a": "阿根廷"},
+                   cookies=admin_cookies)
+    check("Admin P3 wrong-zone rejected", b.get("ok") is False,
+          f"msg: {b.get('msg', '')}")
 
     # Non-admin cannot view user picks
     s, b, _ = req("GET", f"/api/admin/user/{user_a_id}/p1", cookies=user_cookies)
@@ -314,30 +367,33 @@ print("\n📋 Test 6: Project 2 - Group Stage Ranking")
 # Build 12-group prediction for 玩家A (back to user_cookies)
 print("  Submitting group stage predictions for 玩家A...")
 try:
-    # Create predictions for all 12 groups
-    test_groups = []
     group_names = ['A','B','C','D','E','F','G','H','I','J','K','L']
-    for i, g in enumerate(group_names):
-        # Make diverse predictions for testing
-        test_groups.append({
-            "group_name": g,
-            "first_place": f"Team-{g}-1ST",
-            "second_place": f"Team-{g}-2ND"
-        })
+    # Real teams per group
+    p2_teams = {
+        "A": ("墨西哥", "南非"), "B": ("加拿大", "波黑"),
+        "C": ("巴西", "摩洛哥"), "D": ("美国", "巴拉圭"),
+        "E": ("德国", "库拉索"), "F": ("荷兰", "日本"),
+        "G": ("比利时", "埃及"), "H": ("西班牙", "佛得角"),
+        "I": ("法国", "塞内加尔"), "J": ("阿根廷", "阿尔及利亚"),
+        "K": ("葡萄牙", "刚果(金)"), "L": ("英格兰", "克罗地亚"),
+    }
+    # Alternate second-place teams per group (for 玩家B wrong picks)
+    p2_alt_second = {
+        "A": "韩国", "B": "卡塔尔", "C": "海地", "D": "澳大利亚",
+        "E": "厄瓜多尔", "F": "瑞典", "G": "伊朗", "H": "沙特",
+        "I": "挪威", "J": "奥地利", "K": "哥伦比亚", "L": "加纳",
+    }
 
+    test_groups = [{"group_name": g, "first_place": p[0], "second_place": p[1]}
+                    for g, p in p2_teams.items()]
     s, b, _ = req("POST", "/api/predict/p2",
                    {"groups": test_groups},
                    cookies=user_cookies)
     check("玩家A submits P2 (12 groups)", b.get("ok") is True, b.get("msg", ""))
 
-    # Also submit for 玩家B with slightly different picks
-    test_groups_b = []
-    for i, g in enumerate(group_names):
-        test_groups_b.append({
-            "group_name": g,
-            "first_place": f"Team-{g}-1ST",
-            "second_place": f"Alt-Team-{g}-2ND"  # different 2nd place
-        })
+    # Also submit for 玩家B with different 2nd place (all wrong)
+    test_groups_b = [{"group_name": g, "first_place": p2_teams[g][0],
+                       "second_place": p2_alt_second[g]} for g in group_names]
     s, b, _ = req("POST", "/api/predict/p2",
                    {"groups": test_groups_b},
                    cookies=yjf_cookies)
@@ -349,13 +405,8 @@ except Exception as e:
 print("  Scoring P2 (group stage results)...")
 try:
     # Results: 玩家A's picks are all correct, 玩家B has wrong 2nd place for all
-    score_groups = []
-    for g in group_names:
-        score_groups.append({
-            "group_name": g,
-            "first_place": f"Team-{g}-1ST",
-            "second_place": f"Team-{g}-2ND"
-        })
+    score_groups = [{"group_name": g, "first_place": p[0], "second_place": p[1]}
+                     for g, p in p2_teams.items()]
 
     s, b, _ = req("POST", "/api/admin/score-p2",
                    {"groups": score_groups},

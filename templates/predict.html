@@ -63,17 +63,23 @@
             <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));gap:0.75rem;">
                 {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
                 {% set pick = p2_group_picks_map.get(g) %}
+                {% set group_teams = all_teams | selectattr('group_name', 'equalto', g) | list %}
                 <div style="border:1px solid #ddd;border-radius:8px;padding:0.5rem 0.75rem;">
                     <strong>{{ g }}组</strong>
                     <label style="font-size:0.75rem;margin-top:0.25rem;">🥇 第一</label>
-                    <input type="text" id="p2-{{ g }}-first" list="teams-{{ g }}" placeholder="搜索选择..." value="{{ pick.first_place if pick else '' }}" style="font-size:0.85rem;padding:0.25rem;" autocomplete="off">
-                    <label style="font-size:0.75rem;margin-top:0.25rem;">🥈 第二</label>
-                    <input type="text" id="p2-{{ g }}-second" list="teams-{{ g }}" placeholder="搜索选择..." value="{{ pick.second_place if pick else '' }}" style="font-size:0.85rem;padding:0.25rem;" autocomplete="off">
-                    <datalist id="teams-{{ g }}">
-                        {% for t in all_teams if t.group_name == g %}
-                        <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }}</option>
+                    <select id="p2-{{ g }}-first" style="font-size:0.85rem;padding:0.25rem;">
+                        <option value="">-- 选择 --</option>
+                        {% for t in group_teams %}
+                        <option value="{{ t.name }}" {% if pick and pick.first_place == t.name %}selected{% endif %}>{{ t.flag_emoji }} {{ t.name }}</option>
                         {% endfor %}
-                    </datalist>
+                    </select>
+                    <label style="font-size:0.75rem;margin-top:0.25rem;">🥈 第二</label>
+                    <select id="p2-{{ g }}-second" style="font-size:0.85rem;padding:0.25rem;">
+                        <option value="">-- 选择 --</option>
+                        {% for t in group_teams %}
+                        <option value="{{ t.name }}" {% if pick and pick.second_place == t.name %}selected{% endif %}>{{ t.flag_emoji }} {{ t.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 {% endfor %}
             </div>
@@ -166,13 +172,28 @@
 </div>
 
 <script>
+// ── Team name validation ──
+// Collect all valid team names from datalist options on the page
+function getValidTeamNames() {
+    const names = new Set();
+    document.querySelectorAll('datalist option').forEach(opt => {
+        if (opt.value) names.add(opt.value);
+    });
+    return names;
+}
+
+function isValidTeam(name) {
+    return getValidTeamNames().has(name);
+}
+
 // Project 1 submit
 document.getElementById('p1-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
+    const champion = document.getElementById('p1-champion').value.trim();
     const data = {
-        champion: document.getElementById('p1-champion').value.trim(),
+        champion: champion,
         golden_boot: document.getElementById('p1-boot').value.trim(),
         golden_ball: document.getElementById('p1-ball').value.trim(),
         golden_glove: document.getElementById('p1-glove').value.trim(),
@@ -180,6 +201,10 @@ document.getElementById('p1-form')?.addEventListener('submit', async (e) => {
     };
     if (!data.champion || !data.golden_boot || !data.golden_ball || !data.golden_glove || !data.best_young_player) {
         showMsg('p1-msg', '请填写全部五项预测', 'red');
+        return;
+    }
+    if (!isValidTeam(champion)) {
+        showMsg('p1-msg', `「${champion}」不是有效球队，请从列表中选择`, 'red');
         return;
     }
     setLoading(btn, '保存中...');
@@ -244,15 +269,21 @@ document.getElementById('p3-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
-    const data = {
-        zone_a: document.getElementById('p3-zone-a').value.trim(),
-        zone_b: document.getElementById('p3-zone-b').value.trim(),
-        zone_c: document.getElementById('p3-zone-c').value.trim(),
-        zone_d: document.getElementById('p3-zone-d').value.trim(),
-    };
+    const zoneA = document.getElementById('p3-zone-a').value.trim();
+    const zoneB = document.getElementById('p3-zone-b').value.trim();
+    const zoneC = document.getElementById('p3-zone-c').value.trim();
+    const zoneD = document.getElementById('p3-zone-d').value.trim();
+    const data = { zone_a: zoneA, zone_b: zoneB, zone_c: zoneC, zone_d: zoneD };
     if (!data.zone_a || !data.zone_b || !data.zone_c || !data.zone_d) {
         showMsg('p3-msg', '请填写四个分区的选择', 'red');
         return;
+    }
+    // Validate each zone pick is a real team
+    for (const [label, val] of [['A区', zoneA], ['B区', zoneB], ['C区', zoneC], ['D区', zoneD]]) {
+        if (!isValidTeam(val)) {
+            showMsg('p3-msg', `「${val}」不是有效球队（${label}），请从列表中选择`, 'red');
+            return;
+        }
     }
     if (new Set([data.zone_a, data.zone_b, data.zone_c, data.zone_d]).size < 4) {
         showMsg('p3-msg', '四个分区不能选重复球队', 'red');

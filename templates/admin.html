@@ -26,11 +26,11 @@
             </div>
             <div>
                 <label for="team-a">主队</label>
-                <input type="text" id="team-a" placeholder="例如：阿根廷" required>
+                <input type="text" id="team-a" list="teams-all" placeholder="搜索选择球队..." required autocomplete="off">
             </div>
             <div>
                 <label for="team-b">客队</label>
-                <input type="text" id="team-b" placeholder="例如：巴西" required>
+                <input type="text" id="team-b" list="teams-all" placeholder="搜索选择球队..." required autocomplete="off">
             </div>
             <div>
                 <label for="match-time">比赛时间（北京时间）</label>
@@ -40,6 +40,11 @@
         <button type="submit">添加比赛</button>
         <p id="add-match-msg" style="margin-top:0.5rem;"></p>
     </form>
+    <datalist id="teams-all">
+        {% for t in all_teams %}
+        <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }} ({{ t.group_name }}组)</option>
+        {% endfor %}
+    </datalist>
 </div>
 
 <!-- Enter Match Result -->
@@ -130,7 +135,7 @@
         <div class="grid">
             <div>
                 <label for="real-champion">冠军</label>
-                <input type="text" id="real-champion" placeholder="例如：阿根廷" required>
+                <input type="text" id="real-champion" list="teams-all" placeholder="搜索选择球队..." required autocomplete="off">
             </div>
             <div>
                 <label for="real-boot">金靴（最佳射手）</label>
@@ -158,10 +163,23 @@
     <form id="score-p2-form">
         <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));gap:0.5rem;">
             {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
+            {% set group_teams = all_teams | selectattr('group_name', 'equalto', g) | list %}
             <div style="border:1px solid #ddd;border-radius:6px;padding:0.4rem 0.6rem;">
                 <strong>{{ g }}组</strong>
-                <input type="text" id="gs-{{ g }}-first" placeholder="🥇 第一" style="font-size:0.8rem;padding:0.2rem;margin-top:0.2rem;">
-                <input type="text" id="gs-{{ g }}-second" placeholder="🥈 第二" style="font-size:0.8rem;padding:0.2rem;margin-top:0.15rem;">
+                <label style="font-size:0.7rem;margin-top:0.2rem;">🥇 第一</label>
+                <select id="gs-{{ g }}-first" style="font-size:0.8rem;padding:0.2rem;">
+                    <option value="">-- 选择 --</option>
+                    {% for t in group_teams %}
+                    <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }}</option>
+                    {% endfor %}
+                </select>
+                <label style="font-size:0.7rem;margin-top:0.15rem;">🥈 第二</label>
+                <select id="gs-{{ g }}-second" style="font-size:0.8rem;padding:0.2rem;">
+                    <option value="">-- 选择 --</option>
+                    {% for t in group_teams %}
+                    <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
             {% endfor %}
         </div>
@@ -170,24 +188,20 @@
     </form>
 
     <h3 style="margin-top:2rem;">🏟️ 结算项目三（四强）</h3>
+    <p style="color:#888;font-size:0.85rem;">每个分区产生一支四强球队，请从对应分区中选择。</p>
     <form id="score-p3-form">
         <div class="grid">
+            {% for z in [('A', '🔴'), ('B', '🟡'), ('C', '🟢'), ('D', '🔵')] %}
             <div>
-                <label for="sf-1">四强 1</label>
-                <input type="text" id="sf-1" required>
+                <label for="sf-{{ z[0] }}">{{ z[1] }} {{ z[0] }}区四强</label>
+                <input type="text" id="sf-{{ z[0] }}" list="score-teams-zone-{{ z[0] }}" placeholder="搜索选择{{ z[0] }}区球队..." required autocomplete="off">
+                <datalist id="score-teams-zone-{{ z[0] }}">
+                    {% for t in all_teams if t.zone == z[0] %}
+                    <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }} ({{ t.group_name }}组)</option>
+                    {% endfor %}
+                </datalist>
             </div>
-            <div>
-                <label for="sf-2">四强 2</label>
-                <input type="text" id="sf-2" required>
-            </div>
-            <div>
-                <label for="sf-3">四强 3</label>
-                <input type="text" id="sf-3" required>
-            </div>
-            <div>
-                <label for="sf-4">四强 4</label>
-                <input type="text" id="sf-4" required>
-            </div>
+            {% endfor %}
         </div>
         <button type="submit">结算项目三（四强）</button>
         <p id="score-p3-msg" style="margin-top:0.5rem;"></p>
@@ -341,11 +355,21 @@ document.getElementById('add-match-form').addEventListener('submit', async (e) =
     e.preventDefault();
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
+    const teamA = document.getElementById('team-a').value.trim();
+    const teamB = document.getElementById('team-b').value.trim();
+    if (!isValidTeamAdmin(teamA)) {
+        showMsg('add-match-msg', `「${teamA}」不是有效球队，请从列表中选择`, false);
+        return;
+    }
+    if (!isValidTeamAdmin(teamB)) {
+        showMsg('add-match-msg', `「${teamB}」不是有效球队，请从列表中选择`, false);
+        return;
+    }
     const data = {
         round: document.getElementById('round').value,
         match_order: parseInt(document.getElementById('match-order').value),
-        team_a: document.getElementById('team-a').value.trim(),
-        team_b: document.getElementById('team-b').value.trim(),
+        team_a: teamA,
+        team_b: teamB,
         match_time: document.getElementById('match-time').value,
     };
     setLoading(btn, '添加中...');
@@ -422,8 +446,13 @@ document.getElementById('score-p1-form').addEventListener('submit', async (e) =>
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
     if (!confirm('确认结算项目一？所有用户的分数将被更新且不可撤销。')) return;
+    const champion = document.getElementById('real-champion').value.trim();
+    if (!isValidTeamAdmin(champion)) {
+        showMsg('score-p1-msg', `「${champion}」不是有效球队，请从列表中选择`, false);
+        return;
+    }
     const data = {
-        champion: document.getElementById('real-champion').value.trim(),
+        champion: champion,
         golden_boot: document.getElementById('real-boot').value.trim(),
         golden_ball: document.getElementById('real-ball').value.trim(),
         golden_glove: document.getElementById('real-glove').value.trim(),
@@ -454,10 +483,10 @@ document.getElementById('score-p2-form').addEventListener('submit', async (e) =>
     const groupNames = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const groups = [];
     for (const g of groupNames) {
-        const first = document.getElementById(`gs-${g}-first`).value.trim();
-        const second = document.getElementById(`gs-${g}-second`).value.trim();
+        const first = document.getElementById(`gs-${g}-first`).value;
+        const second = document.getElementById(`gs-${g}-second`).value;
         if (!first || !second) {
-            showMsg('score-p2-msg', `请填写${g}组的第一和第二名`, false);
+            showMsg('score-p2-msg', `请选择${g}组的第一和第二名`, false);
             return;
         }
         groups.push({group_name: g, first_place: first, second_place: second});
@@ -484,14 +513,23 @@ document.getElementById('score-p3-form').addEventListener('submit', async (e) =>
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
     if (!confirm('确认结算项目三？所有用户的分数将被更新且不可撤销。')) return;
-    const data = {
-        semifinal_teams: [
-            document.getElementById('sf-1').value.trim(),
-            document.getElementById('sf-2').value.trim(),
-            document.getElementById('sf-3').value.trim(),
-            document.getElementById('sf-4').value.trim(),
-        ]
-    };
+    const zones = ['A', 'B', 'C', 'D'];
+    const teams = zones.map(z => document.getElementById(`sf-${z}`).value.trim());
+    for (let i = 0; i < zones.length; i++) {
+        const z = zones[i];
+        const t = teams[i];
+        if (!isValidTeamAdmin(t)) {
+            showMsg('score-p3-msg', `「${t}」不是有效球队（${z}区），请从列表中选择`, false);
+            return;
+        }
+        // Validate zone membership
+        const dl = document.getElementById(`score-teams-zone-${z}`);
+        if (dl && ![...dl.options].some(o => o.value === t)) {
+            showMsg('score-p3-msg', `「${t}」不属于${z}区，请从${z}区球队中选择`, false);
+            return;
+        }
+    }
+    const data = { semifinal_teams: teams };
     setLoading(btn, '结算中...');
     try {
         const res = await fetch('/api/admin/score-p3', {
@@ -507,6 +545,18 @@ document.getElementById('score-p3-form').addEventListener('submit', async (e) =>
         resetLoading(btn);
     }
 });
+
+// ── Team name validation ──
+function getValidTeamNamesAdmin() {
+    const names = new Set();
+    document.querySelectorAll('#teams-all-admin option, [id^="teams-zone-"] option').forEach(opt => {
+        if (opt.value) names.add(opt.value);
+    });
+    return names;
+}
+function isValidTeamAdmin(name) {
+    return getValidTeamNamesAdmin().has(name);
+}
 
 // ── Team Management ──
 
@@ -558,15 +608,28 @@ async function loadUserPicks() {
         const groupNames = ['A','B','C','D','E','F','G','H','I','J','K','L'];
         const picksMap = {};
         if (r2.ok && r2.groups) r2.groups.forEach(g => { picksMap[g.group_name] = g; });
+        // Build group-team mapping from the teams-all-admin datalist
+        const groupTeams = {};
+        document.querySelectorAll('#teams-all-admin option').forEach(opt => {
+            const m = opt.textContent.match(/\(([A-L])组\)/);
+            if (m) {
+                if (!groupTeams[m[1]]) groupTeams[m[1]] = [];
+                groupTeams[m[1]].push({value: opt.value, label: opt.textContent});
+            }
+        });
         container.innerHTML = groupNames.map(g => {
             const p = picksMap[g] || {};
+            const teams = groupTeams[g] || [];
+            const options = ['<option value="">-- 选择 --</option>']
+                .concat(teams.map(t => `<option value="${t.value}" ${p.first_place === t.value ? 'selected' : ''}>${t.label}</option>`))
+                .join('');
+            const options2 = ['<option value="">-- 选择 --</option>']
+                .concat(teams.map(t => `<option value="${t.value}" ${p.second_place === t.value ? 'selected' : ''}>${t.label}</option>`))
+                .join('');
             return `<div style="border:1px solid #ddd;border-radius:6px;padding:0.4rem 0.6rem;">
                 <strong>${g}组</strong>
-                <input type="text" id="admin-p2-${g}-first" list="teams-${g}-admin" placeholder="🥇 第一" value="${p.first_place || ''}" style="font-size:0.8rem;padding:0.2rem;margin-top:0.2rem;" autocomplete="off">
-                <input type="text" id="admin-p2-${g}-second" list="teams-${g}-admin" placeholder="🥈 第二" value="${p.second_place || ''}" style="font-size:0.8rem;padding:0.2rem;margin-top:0.15rem;" autocomplete="off">
-                <datalist id="teams-${g}-admin">
-                    ${[...document.querySelectorAll('#teams-all-admin option')].filter(o => o.textContent.includes(`(${g}组)`)).map(o => `<option value="${o.value}">${o.textContent}</option>`).join('')}
-                </datalist>
+                <select id="admin-p2-${g}-first" style="font-size:0.8rem;padding:0.2rem;margin-top:0.2rem;width:100%;">${options}</select>
+                <select id="admin-p2-${g}-second" style="font-size:0.8rem;padding:0.2rem;margin-top:0.15rem;width:100%;">${options2}</select>
             </div>`;
         }).join('');
     } catch (e) { /* ignore */ }
@@ -590,8 +653,13 @@ async function saveUserP1(e) {
     e.preventDefault();
     const userId = document.getElementById('admin-p1-user-id').value;
     const btn = e.target.querySelector('button[type="submit"]');
+    const champion = document.getElementById('admin-p1-champion').value.trim();
+    if (champion && !isValidTeamAdmin(champion)) {
+        showMsg('admin-p1-msg', `「${champion}」不是有效球队，请从列表中选择`, false);
+        return;
+    }
     const data = {
-        champion: document.getElementById('admin-p1-champion').value.trim(),
+        champion: champion,
         golden_boot: document.getElementById('admin-p1-boot').value.trim(),
         golden_ball: document.getElementById('admin-p1-ball').value.trim(),
         golden_glove: document.getElementById('admin-p1-glove').value.trim(),
@@ -639,12 +707,18 @@ async function saveUserP3(e) {
     e.preventDefault();
     const userId = document.getElementById('admin-p3-user-id').value;
     const btn = e.target.querySelector('button[type="submit"]');
-    const data = {
-        zone_a: document.getElementById('admin-p3-zone-a').value.trim(),
-        zone_b: document.getElementById('admin-p3-zone-b').value.trim(),
-        zone_c: document.getElementById('admin-p3-zone-c').value.trim(),
-        zone_d: document.getElementById('admin-p3-zone-d').value.trim(),
-    };
+    const zoneA = document.getElementById('admin-p3-zone-a').value.trim();
+    const zoneB = document.getElementById('admin-p3-zone-b').value.trim();
+    const zoneC = document.getElementById('admin-p3-zone-c').value.trim();
+    const zoneD = document.getElementById('admin-p3-zone-d').value.trim();
+    const data = { zone_a: zoneA, zone_b: zoneB, zone_c: zoneC, zone_d: zoneD };
+    // Validate each zone pick
+    for (const [label, val] of [['A区', zoneA], ['B区', zoneB], ['C区', zoneC], ['D区', zoneD]]) {
+        if (val && !isValidTeamAdmin(val)) {
+            showMsg('admin-p3-msg', `「${val}」不是有效球队（${label}），请从列表中选择`, false);
+            return;
+        }
+    }
     setLoading(btn, '保存中...');
     try {
         const res = await fetch(`/api/admin/user/${userId}/p3`, {
