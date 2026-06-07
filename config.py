@@ -14,12 +14,6 @@ class Config:
     ADMIN_NICKNAME = os.environ.get("ADMIN_NICKNAME", "admin")
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
-    # Tournament config
-    TOURNAMENT_START = "2026-06-11"
-    TOURNAMENT_END = "2026-07-19"
-    GROUP_STAGE_START = "2026-06-11"
-    GROUP_STAGE_END = "2026-06-27"
-
     # Scoring rules
     # Project 1: Champion + 4 individual awards (Golden Boot/Ball/Glove, Best Young Player)
     P1_CHAMPION_PTS = 8
