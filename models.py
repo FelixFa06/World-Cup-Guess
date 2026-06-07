@@ -187,6 +187,18 @@ class MatchPrediction(db.Model):
     )
 
 
+class Team(db.Model):
+    __tablename__ = "teams"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, index=True)  # 规范中文名
+    name_en = db.Column(db.String(100), nullable=True)  # 英文名
+    group_name = db.Column(db.String(2), nullable=False)  # A-L
+    zone = db.Column(db.String(1), nullable=True)  # A/B/C/D 淘汰赛分区
+    flag_emoji = db.Column(db.String(10), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
 class DailyStar(db.Model):
     __tablename__ = "daily_stars"
 

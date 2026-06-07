@@ -248,3 +248,26 @@ def _get_result(score_a, score_b):
         return "win_b"
     else:
         return "draw"
+
+
+def normalize_team_name(name, canonical_names):
+    """
+    Normalize a team name against a set of canonical names.
+
+    Args:
+        name: the user-submitted team name string
+        canonical_names: iterable of canonical team name strings
+
+    Returns:
+        The matching canonical name if found, otherwise the original name.
+        Matching is case-insensitive.
+    """
+    if not name or not canonical_names:
+        return name.strip() if name else ""
+
+    name_lower = name.strip().lower()
+    for canonical in canonical_names:
+        if canonical.lower() == name_lower:
+            return canonical
+
+    return name.strip()

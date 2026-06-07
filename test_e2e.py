@@ -153,6 +153,116 @@ try:
 except Exception as e:
     check("Delete match", False, str(e))
 
+# ── Test 3c: Teams and Name Normalization ──
+print("\n🌍 Test 3c: Teams & Name Normalization")
+try:
+    s, b, _ = req("GET", "/api/admin/teams", cookies=admin_cookies)
+    check("Admin gets team list", b.get("ok") is True and len(b.get("teams", [])) == 48,
+          f"got {len(b.get('teams', []))} teams")
+
+    # Non-admin blocked from team list
+    s, b, _ = req("GET", "/api/admin/teams", cookies=user_cookies)
+    check("Non-admin blocked from teams", b.get("ok") is False, b.get("msg", ""))
+
+    # Update a team zone
+    s, b, _ = req("POST", "/api/admin/team/1",
+                   {"zone": "B", "group_name": "A"},
+                   cookies=admin_cookies)
+    check("Admin updates team", b.get("ok") is True, b.get("msg", ""))
+
+    # Verify team was updated
+    s, b, _ = req("GET", "/api/admin/teams", cookies=admin_cookies)
+    team1 = next((t for t in b["teams"] if t["id"] == 1), None)
+    check("Team zone updated to B", team1["zone"] == "B" if team1 else False,
+          f"zone={team1.get('zone') if team1 else 'none'}")
+
+    # Reset team zone back
+    req("POST", "/api/admin/team/1",
+         {"zone": "C", "group_name": "A"},
+         cookies=admin_cookies)
+
+    # Test name normalization: submit P1 champion with a non-canonical name
+    # "法兰西" should NOT match "法国" (no fuzzy matching, only exact case-insensitive)
+    # but submitting "法国" directly should stay as "法国"
+    s, b, _ = req("POST", "/api/predict/p1",
+                   {"champion": "法国", "golden_boot": "姆巴佩", "golden_ball": "维尼修斯",
+                    "golden_glove": "库尔图瓦", "best_young_player": "贝林厄姆"},
+                   cookies=user_cookies)
+    check("P1 with canonical name accepted", b.get("ok") is True, b.get("msg", ""))
+
+    # Submit P2 with canonical names
+    test_groups_norm = [{"group_name": g, "first_place": f"Team-{g}-1ST",
+                          "second_place": f"Team-{g}-2ND"} for g in "ABCDEFGHIJKL"]
+    s, b, _ = req("POST", "/api/predict/p2",
+                   {"groups": test_groups_norm},
+                   cookies=user_cookies)
+    check("P2 submitted with canonical names", b.get("ok") is True, b.get("msg", ""))
+
+    # Submit P3 with canonical team names
+    s, b, _ = req("POST", "/api/predict/p3",
+                   {"zone_a": "德国", "zone_b": "美国", "zone_c": "巴西", "zone_d": "阿根廷"},
+                   cookies=user_cookies)
+    check("P3 with canonical names accepted", b.get("ok") is True, b.get("msg", ""))
+except Exception as e:
+    check("Teams & normalization", False, str(e))
+
+# ── Test 3d: Admin Edit User Picks ──
+print("\n✏️ Test 3d: Admin Edit User Picks")
+try:
+    # Get user ID for 玩家A (we need to query this)
+    # 玩家A should be user id 2 (after admin id 1)
+    user_a_id = 2
+
+    # Admin views 玩家A's P1
+    s, b, _ = req("GET", f"/api/admin/user/{user_a_id}/p1", cookies=admin_cookies)
+    check("Admin views P1 of 玩家A", b.get("ok") is True and b.get("pick") is not None,
+          f"ok={b.get('ok')}, pick={'present' if b.get('pick') else 'none'}")
+
+    # Admin edits 玩家A's P1 (correct player spelling)
+    s, b, _ = req("POST", f"/api/admin/user/{user_a_id}/p1",
+                   {"golden_boot": "基利安·姆巴佩", "best_young_player": "裘德·贝林厄姆"},
+                   cookies=admin_cookies)
+    check("Admin edits 玩家A P1", b.get("ok") is True, b.get("msg", ""))
+
+    # Verify the edit
+    s, b, _ = req("GET", f"/api/admin/user/{user_a_id}/p1", cookies=admin_cookies)
+    check("P1 boot updated", b.get("pick", {}).get("golden_boot") == "基利安·姆巴佩",
+          f"got: {b.get('pick', {}).get('golden_boot')}")
+    check("P1 young updated", b.get("pick", {}).get("best_young_player") == "裘德·贝林厄姆",
+          f"got: {b.get('pick', {}).get('best_young_player')}")
+
+    # Admin views 玩家A's P2
+    s, b, _ = req("GET", f"/api/admin/user/{user_a_id}/p2", cookies=admin_cookies)
+    check("Admin views P2 of 玩家A", b.get("ok") is True and len(b.get("groups", [])) > 0,
+          f"groups count: {len(b.get('groups', []))}")
+
+    # Admin edits 玩家A's P2
+    s, b, _ = req("POST", f"/api/admin/user/{user_a_id}/p2",
+                   {"groups": [{"group_name": "A", "first_place": "法国", "second_place": "巴西"}]},
+                   cookies=admin_cookies)
+    check("Admin edits 玩家A P2", b.get("ok") is True, b.get("msg", ""))
+
+    # Admin views 玩家A's P3
+    s, b, _ = req("GET", f"/api/admin/user/{user_a_id}/p3", cookies=admin_cookies)
+    check("Admin views P3 of 玩家A", b.get("ok") is True and b.get("pick") is not None,
+          f"pick={'present' if b.get('pick') else 'none'}")
+
+    # Admin edits 玩家A's P3
+    s, b, _ = req("POST", f"/api/admin/user/{user_a_id}/p3",
+                   {"zone_a": "法国", "zone_b": "阿根廷"},
+                   cookies=admin_cookies)
+    check("Admin edits 玩家A P3", b.get("ok") is True, b.get("msg", ""))
+
+    # Non-admin cannot view user picks
+    s, b, _ = req("GET", f"/api/admin/user/{user_a_id}/p1", cookies=user_cookies)
+    check("Non-admin blocked from viewing picks", b.get("ok") is False, b.get("msg", ""))
+
+    # Non-existent user
+    s, b, _ = req("GET", "/api/admin/user/99999/p1", cookies=admin_cookies)
+    check("Non-existent user returns error", b.get("ok") is False, f"status={s}")
+except Exception as e:
+    check("Admin edit picks", False, str(e))
+
 # ── Test 4: Admin opens match for predictions ──
 print("\n🔓 Test 4: Open Match for Prediction")
 try:

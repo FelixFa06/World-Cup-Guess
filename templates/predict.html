@@ -17,7 +17,12 @@
             <div class="grid">
                 <div>
                     <label for="p1-champion">🏆 冠军球队（8分）</label>
-                    <input type="text" id="p1-champion" placeholder="例如：阿根廷" value="{{ p1_pick.champion_team if p1_pick else '' }}" required>
+                    <input type="text" id="p1-champion" list="teams-all" placeholder="搜索并选择球队..." value="{{ p1_pick.champion_team if p1_pick else '' }}" required autocomplete="off">
+                    <datalist id="teams-all">
+                        {% for t in all_teams %}
+                        <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }} ({{ t.group_name }}组)</option>
+                        {% endfor %}
+                    </datalist>
                 </div>
                 <div>
                     <label for="p1-boot">👟 金靴得主（3分）</label>
@@ -61,9 +66,14 @@
                 <div style="border:1px solid #ddd;border-radius:8px;padding:0.5rem 0.75rem;">
                     <strong>{{ g }}组</strong>
                     <label style="font-size:0.75rem;margin-top:0.25rem;">🥇 第一</label>
-                    <input type="text" id="p2-{{ g }}-first" placeholder="第一名" value="{{ pick.first_place if pick else '' }}" style="font-size:0.85rem;padding:0.25rem;">
+                    <input type="text" id="p2-{{ g }}-first" list="teams-{{ g }}" placeholder="搜索选择..." value="{{ pick.first_place if pick else '' }}" style="font-size:0.85rem;padding:0.25rem;" autocomplete="off">
                     <label style="font-size:0.75rem;margin-top:0.25rem;">🥈 第二</label>
-                    <input type="text" id="p2-{{ g }}-second" placeholder="第二名" value="{{ pick.second_place if pick else '' }}" style="font-size:0.85rem;padding:0.25rem;">
+                    <input type="text" id="p2-{{ g }}-second" list="teams-{{ g }}" placeholder="搜索选择..." value="{{ pick.second_place if pick else '' }}" style="font-size:0.85rem;padding:0.25rem;" autocomplete="off">
+                    <datalist id="teams-{{ g }}">
+                        {% for t in all_teams if t.group_name == g %}
+                        <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }}</option>
+                        {% endfor %}
+                    </datalist>
                 </div>
                 {% endfor %}
             </div>
@@ -89,19 +99,39 @@
             <div class="grid">
                 <div>
                     <label for="p3-zone-a">🔴 A区球队</label>
-                    <input type="text" id="p3-zone-a" placeholder="A区选择" value="{{ p3_pick.zone_a_team if p3_pick else '' }}" required>
+                    <input type="text" id="p3-zone-a" list="teams-zone-A" placeholder="A区选择" value="{{ p3_pick.zone_a_team if p3_pick else '' }}" required autocomplete="off">
+                    <datalist id="teams-zone-A">
+                        {% for t in all_teams if t.zone == 'A' %}
+                        <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }} ({{ t.group_name }}组)</option>
+                        {% endfor %}
+                    </datalist>
                 </div>
                 <div>
                     <label for="p3-zone-b">🟡 B区球队</label>
-                    <input type="text" id="p3-zone-b" placeholder="B区选择" value="{{ p3_pick.zone_b_team if p3_pick else '' }}" required>
+                    <input type="text" id="p3-zone-b" list="teams-zone-B" placeholder="B区选择" value="{{ p3_pick.zone_b_team if p3_pick else '' }}" required autocomplete="off">
+                    <datalist id="teams-zone-B">
+                        {% for t in all_teams if t.zone == 'B' %}
+                        <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }} ({{ t.group_name }}组)</option>
+                        {% endfor %}
+                    </datalist>
                 </div>
                 <div>
                     <label for="p3-zone-c">🟢 C区球队</label>
-                    <input type="text" id="p3-zone-c" placeholder="C区选择" value="{{ p3_pick.zone_c_team if p3_pick else '' }}" required>
+                    <input type="text" id="p3-zone-c" list="teams-zone-C" placeholder="C区选择" value="{{ p3_pick.zone_c_team if p3_pick else '' }}" required autocomplete="off">
+                    <datalist id="teams-zone-C">
+                        {% for t in all_teams if t.zone == 'C' %}
+                        <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }} ({{ t.group_name }}组)</option>
+                        {% endfor %}
+                    </datalist>
                 </div>
                 <div>
                     <label for="p3-zone-d">🔵 D区球队</label>
-                    <input type="text" id="p3-zone-d" placeholder="D区选择" value="{{ p3_pick.zone_d_team if p3_pick else '' }}" required>
+                    <input type="text" id="p3-zone-d" list="teams-zone-D" placeholder="D区选择" value="{{ p3_pick.zone_d_team if p3_pick else '' }}" required autocomplete="off">
+                    <datalist id="teams-zone-D">
+                        {% for t in all_teams if t.zone == 'D' %}
+                        <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }} ({{ t.group_name }}组)</option>
+                        {% endfor %}
+                    </datalist>
                 </div>
             </div>
             <button type="submit">💾 保存项目三</button>

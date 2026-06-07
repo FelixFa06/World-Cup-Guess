@@ -16,10 +16,11 @@ from flask_login import (
 from werkzeug.security import check_password_hash
 
 from config import Config
-from models import db, User, Match, Project1Pick, Project2Pick, GroupStagePick, MatchPrediction, DailyStar
+from models import db, User, Match, Project1Pick, Project2Pick, GroupStagePick, MatchPrediction, DailyStar, Team
 from scoring import (
     score_match_prediction, score_project1, score_project2, score_group_stage,
     calculate_daily_stars, get_leaderboard, snapshot_leaderboard_ranks,
+    normalize_team_name,
 )
 
 
@@ -136,6 +137,9 @@ def create_app():
             if pred:
                 user_predictions[m.id] = pred
 
+        # All teams for search dropdowns
+        all_teams = Team.query.order_by(Team.group_name, Team.name).all()
+
         return render_template(
             "predict.html",
             p1_pick=p1_pick,
@@ -147,6 +151,7 @@ def create_app():
             p3_deadline_passed=p3_deadline_passed,
             open_matches=open_matches,
             user_predictions=user_predictions,
+            all_teams=all_teams,
         )
 
     @app.route("/matches")
@@ -209,11 +214,13 @@ def create_app():
 
         matches = Match.query.order_by(Match.match_time.asc()).all()
         users = User.query.filter_by(is_admin=False).order_by(User.nickname).all()
+        all_teams = Team.query.order_by(Team.group_name, Team.name).all()
 
         return render_template(
             "admin.html",
             matches=matches,
             users=users,
+            all_teams=all_teams,
         )
 
     # ── API Routes: Auth ──
@@ -284,6 +291,10 @@ def create_app():
         if not all([champion, golden_boot, golden_ball, golden_glove, best_young_player]):
             return jsonify({"ok": False, "msg": "五项预测不能为空"}), 400
 
+        # Normalize champion team name against Team table
+        team_names = [t.name for t in Team.query.all()]
+        champion = normalize_team_name(champion, team_names)
+
         pick = Project1Pick.query.filter_by(user_id=current_user.id).first()
         if pick:
             pick.champion_team = champion
@@ -328,6 +339,9 @@ def create_app():
         if group_names != expected:
             return jsonify({"ok": False, "msg": "小组名称必须为A-L共12个"}), 400
 
+        # Build team name lookup for normalization
+        team_names = [t.name for t in Team.query.all()]
+
         for g in groups:
             group_name = g.get("group_name", "").strip().upper()
             first = g.get("first_place", "").strip()
@@ -338,6 +352,10 @@ def create_app():
 
             if first == second:
                 return jsonify({"ok": False, "msg": f"小组{group_name}的第一和第二名不能相同"}), 400
+
+            # Normalize team names
+            first = normalize_team_name(first, team_names)
+            second = normalize_team_name(second, team_names)
 
             # Upsert this group's pick
             pick = GroupStagePick.query.filter_by(
@@ -380,6 +398,13 @@ def create_app():
 
         if not zone_a or not zone_b or not zone_c or not zone_d:
             return jsonify({"ok": False, "msg": "四个分区的选择不能为空"}), 400
+
+        # Normalize team names
+        team_names = [t.name for t in Team.query.all()]
+        zone_a = normalize_team_name(zone_a, team_names)
+        zone_b = normalize_team_name(zone_b, team_names)
+        zone_c = normalize_team_name(zone_c, team_names)
+        zone_d = normalize_team_name(zone_d, team_names)
 
         if len({zone_a, zone_b, zone_c, zone_d}) < 4:
             return jsonify({"ok": False, "msg": "四个分区不能选重复球队"}), 400
@@ -670,6 +695,216 @@ def create_app():
         db.session.commit()
         return jsonify({"ok": True, "msg": f"项目三（四强预测）已结算，{count} 位群友的分数已更新"})
 
+    # ── API Routes: Admin Team Management ──
+
+    @app.route("/api/admin/teams", methods=["GET"])
+    @login_required
+    def api_admin_get_teams():
+        """List all teams"""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        teams = Team.query.order_by(Team.group_name, Team.name).all()
+        return jsonify({
+            "ok": True,
+            "teams": [{
+                "id": t.id,
+                "name": t.name,
+                "name_en": t.name_en,
+                "group_name": t.group_name,
+                "zone": t.zone,
+                "flag_emoji": t.flag_emoji,
+            } for t in teams]
+        })
+
+    @app.route("/api/admin/team/<int:team_id>", methods=["POST"])
+    @login_required
+    def api_admin_update_team(team_id):
+        """Update a team's zone or group"""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        team = Team.query.get(team_id)
+        if not team:
+            return jsonify({"ok": False, "msg": "球队不存在"}), 404
+
+        data = request.get_json()
+        if "zone" in data:
+            zone = data["zone"].strip().upper()
+            if zone not in ("A", "B", "C", "D", ""):
+                return jsonify({"ok": False, "msg": "分区必须为A/B/C/D或空"}), 400
+            team.zone = zone if zone else None
+        if "group_name" in data:
+            gn = data["group_name"].strip().upper()
+            if gn not in "ABCDEFGHIJKL":
+                return jsonify({"ok": False, "msg": "小组必须为A-L"}), 400
+            team.group_name = gn
+
+        db.session.commit()
+        return jsonify({"ok": True, "msg": f"球队「{team.name}」已更新"})
+
+    # ── API Routes: Admin Edit User Picks ──
+
+    @app.route("/api/admin/user/<int:user_id>/p1", methods=["GET", "POST"])
+    @login_required
+    def api_admin_user_p1(user_id):
+        """GET: view user's P1 pick. POST: update user's P1 pick."""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        user = User.query.get(user_id)
+        if not user or user.is_admin:
+            return jsonify({"ok": False, "msg": "用户不存在"}), 404
+
+        if request.method == "GET":
+            pick = Project1Pick.query.filter_by(user_id=user_id).first()
+            if not pick:
+                return jsonify({"ok": True, "pick": None, "msg": "该用户尚未提交项目一"})
+            return jsonify({
+                "ok": True,
+                "pick": {
+                    "champion": pick.champion_team,
+                    "golden_boot": pick.golden_boot_player,
+                    "golden_ball": pick.golden_ball_player,
+                    "golden_glove": pick.golden_glove_player,
+                    "best_young_player": pick.best_young_player,
+                    "score": pick.score,
+                }
+            })
+
+        # POST: update
+        data = request.get_json()
+        pick = Project1Pick.query.filter_by(user_id=user_id).first()
+        if not pick:
+            return jsonify({"ok": False, "msg": "该用户尚未提交项目一，无法编辑"}), 400
+
+        if "champion" in data:
+            team_names = [t.name for t in Team.query.all()]
+            pick.champion_team = normalize_team_name(data["champion"].strip(), team_names)
+        if "golden_boot" in data:
+            pick.golden_boot_player = data["golden_boot"].strip()
+        if "golden_ball" in data:
+            pick.golden_ball_player = data["golden_ball"].strip()
+        if "golden_glove" in data:
+            pick.golden_glove_player = data["golden_glove"].strip()
+        if "best_young_player" in data:
+            pick.best_young_player = data["best_young_player"].strip()
+
+        pick.updated_at = utcnow()
+        db.session.commit()
+        return jsonify({"ok": True, "msg": f"已更新 {user.nickname} 的项目一预测"})
+
+    @app.route("/api/admin/user/<int:user_id>/p2", methods=["GET", "POST"])
+    @login_required
+    def api_admin_user_p2(user_id):
+        """GET: view user's P2 picks. POST: update user's P2 picks."""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        user = User.query.get(user_id)
+        if not user or user.is_admin:
+            return jsonify({"ok": False, "msg": "用户不存在"}), 404
+
+        if request.method == "GET":
+            picks = GroupStagePick.query.filter_by(user_id=user_id).order_by(
+                GroupStagePick.group_name
+            ).all()
+            return jsonify({
+                "ok": True,
+                "groups": [{
+                    "group_name": p.group_name,
+                    "first_place": p.first_place,
+                    "second_place": p.second_place,
+                    "score": p.score,
+                } for p in picks]
+            })
+
+        # POST: update
+        data = request.get_json()
+        groups = data.get("groups", [])
+
+        if not groups:
+            return jsonify({"ok": False, "msg": "请提供小组数据"}), 400
+
+        team_names = [t.name for t in Team.query.all()]
+
+        for g in groups:
+            group_name = g.get("group_name", "").strip().upper()
+            first = g.get("first_place", "").strip()
+            second = g.get("second_place", "").strip()
+
+            if not group_name or not first or not second:
+                continue
+
+            first = normalize_team_name(first, team_names)
+            second = normalize_team_name(second, team_names)
+
+            pick = GroupStagePick.query.filter_by(
+                user_id=user_id, group_name=group_name
+            ).first()
+            if pick:
+                pick.first_place = first
+                pick.second_place = second
+                pick.updated_at = utcnow()
+            else:
+                pick = GroupStagePick(
+                    user_id=user_id,
+                    group_name=group_name,
+                    first_place=first,
+                    second_place=second,
+                )
+                db.session.add(pick)
+
+        db.session.commit()
+        return jsonify({"ok": True, "msg": f"已更新 {user.nickname} 的项目二预测"})
+
+    @app.route("/api/admin/user/<int:user_id>/p3", methods=["GET", "POST"])
+    @login_required
+    def api_admin_user_p3(user_id):
+        """GET: view user's P3 pick. POST: update user's P3 pick."""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        user = User.query.get(user_id)
+        if not user or user.is_admin:
+            return jsonify({"ok": False, "msg": "用户不存在"}), 404
+
+        if request.method == "GET":
+            pick = Project2Pick.query.filter_by(user_id=user_id).first()
+            if not pick:
+                return jsonify({"ok": True, "pick": None, "msg": "该用户尚未提交项目三"})
+            return jsonify({
+                "ok": True,
+                "pick": {
+                    "zone_a": pick.zone_a_team,
+                    "zone_b": pick.zone_b_team,
+                    "zone_c": pick.zone_c_team,
+                    "zone_d": pick.zone_d_team,
+                    "score": pick.score,
+                }
+            })
+
+        # POST: update
+        data = request.get_json()
+        pick = Project2Pick.query.filter_by(user_id=user_id).first()
+        if not pick:
+            return jsonify({"ok": False, "msg": "该用户尚未提交项目三，无法编辑"}), 400
+
+        team_names = [t.name for t in Team.query.all()]
+
+        if "zone_a" in data:
+            pick.zone_a_team = normalize_team_name(data["zone_a"].strip(), team_names)
+        if "zone_b" in data:
+            pick.zone_b_team = normalize_team_name(data["zone_b"].strip(), team_names)
+        if "zone_c" in data:
+            pick.zone_c_team = normalize_team_name(data["zone_c"].strip(), team_names)
+        if "zone_d" in data:
+            pick.zone_d_team = normalize_team_name(data["zone_d"].strip(), team_names)
+
+        pick.updated_at = utcnow()
+        db.session.commit()
+        return jsonify({"ok": True, "msg": f"已更新 {user.nickname} 的项目三预测"})
+
     @app.route("/api/match/<int:match_id>/predictions")
     def api_match_predictions(match_id):
         """Get all predictions for a match (public after match closed)"""
@@ -725,8 +960,10 @@ def create_app():
 
     @app.cli.command("init-db")
     def init_db():
-        """Initialize database with tables and admin user."""
+        """Initialize database with tables, admin user, and 48 teams."""
         db.create_all()
+
+        # Admin user
         admin = User.query.filter_by(nickname=Config.ADMIN_NICKNAME).first()
         if not admin:
             admin = User(
@@ -739,6 +976,95 @@ def create_app():
             print(f"Admin user created: {Config.ADMIN_NICKNAME}")
         else:
             print(f"Admin user already exists: {Config.ADMIN_NICKNAME}")
+
+        # Seed 48 teams (2026 World Cup)
+        if Team.query.first() is None:
+            # Zone mapping (group winner path → QF zone):
+            #   A区 (QF1 Boston): E, F, I
+            #   B区 (QF2 LA):     D, G, H
+            #   C区 (QF4 KC):     A, C, L
+            #   D区 (QF3 Miami):  B, J, K
+            zone_map = {
+                "A": "C", "B": "D", "C": "C", "D": "B",
+                "E": "A", "F": "A", "G": "B", "H": "B",
+                "I": "A", "J": "D", "K": "D", "L": "C",
+            }
+            teams_data = [
+                # Group A
+                ("墨西哥", "Mexico", "A", "🇲🇽"),
+                ("南非", "South Africa", "A", "🇿🇦"),
+                ("韩国", "South Korea", "A", "🇰🇷"),
+                ("捷克", "Czechia", "A", "🇨🇿"),
+                # Group B
+                ("加拿大", "Canada", "B", "🇨🇦"),
+                ("波黑", "Bosnia and Herzegovina", "B", "🇧🇦"),
+                ("卡塔尔", "Qatar", "B", "🇶🇦"),
+                ("瑞士", "Switzerland", "B", "🇨🇭"),
+                # Group C
+                ("巴西", "Brazil", "C", "🇧🇷"),
+                ("摩洛哥", "Morocco", "C", "🇲🇦"),
+                ("海地", "Haiti", "C", "🇭🇹"),
+                ("苏格兰", "Scotland", "C", "🏴󠁧󠁢󠁳󠁣󠁴󠁿"),
+                # Group D
+                ("美国", "United States", "D", "🇺🇸"),
+                ("巴拉圭", "Paraguay", "D", "🇵🇾"),
+                ("澳大利亚", "Australia", "D", "🇦🇺"),
+                ("土耳其", "Türkiye", "D", "🇹🇷"),
+                # Group E
+                ("德国", "Germany", "E", "🇩🇪"),
+                ("库拉索", "Curaçao", "E", "🇨🇼"),
+                ("科特迪瓦", "Côte d'Ivoire", "E", "🇨🇮"),
+                ("厄瓜多尔", "Ecuador", "E", "🇪🇨"),
+                # Group F
+                ("荷兰", "Netherlands", "F", "🇳🇱"),
+                ("日本", "Japan", "F", "🇯🇵"),
+                ("瑞典", "Sweden", "F", "🇸🇪"),
+                ("突尼斯", "Tunisia", "F", "🇹🇳"),
+                # Group G
+                ("比利时", "Belgium", "G", "🇧🇪"),
+                ("埃及", "Egypt", "G", "🇪🇬"),
+                ("伊朗", "Iran", "G", "🇮🇷"),
+                ("新西兰", "New Zealand", "G", "🇳🇿"),
+                # Group H
+                ("西班牙", "Spain", "H", "🇪🇸"),
+                ("佛得角", "Cape Verde", "H", "🇨🇻"),
+                ("沙特", "Saudi Arabia", "H", "🇸🇦"),
+                ("乌拉圭", "Uruguay", "H", "🇺🇾"),
+                # Group I
+                ("法国", "France", "I", "🇫🇷"),
+                ("塞内加尔", "Senegal", "I", "🇸🇳"),
+                ("伊拉克", "Iraq", "I", "🇮🇶"),
+                ("挪威", "Norway", "I", "🇳🇴"),
+                # Group J
+                ("阿根廷", "Argentina", "J", "🇦🇷"),
+                ("阿尔及利亚", "Algeria", "J", "🇩🇿"),
+                ("奥地利", "Austria", "J", "🇦🇹"),
+                ("约旦", "Jordan", "J", "🇯🇴"),
+                # Group K
+                ("葡萄牙", "Portugal", "K", "🇵🇹"),
+                ("刚果(金)", "DR Congo", "K", "🇨🇩"),
+                ("乌兹别克斯坦", "Uzbekistan", "K", "🇺🇿"),
+                ("哥伦比亚", "Colombia", "K", "🇨🇴"),
+                # Group L
+                ("英格兰", "England", "L", "🏴󠁧󠁢󠁥󠁮󠁧󠁿"),
+                ("克罗地亚", "Croatia", "L", "🇭🇷"),
+                ("加纳", "Ghana", "L", "🇬🇭"),
+                ("巴拿马", "Panama", "L", "🇵🇦"),
+            ]
+            for name, name_en, group_name, flag in teams_data:
+                team = Team(
+                    name=name,
+                    name_en=name_en,
+                    group_name=group_name,
+                    zone=zone_map.get(group_name),
+                    flag_emoji=flag,
+                )
+                db.session.add(team)
+            db.session.commit()
+            print(f"Seeded {len(teams_data)} teams.")
+        else:
+            print("Teams already exist, skipping seed.")
+
         print("Database initialized.")
 
     return app
