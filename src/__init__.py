@@ -25,8 +25,16 @@ from .scoring import (
 
 
 def create_app():
-    instance_path = os.path.join(os.path.dirname(__file__), '..', 'instance')
-    app = Flask(__name__, instance_path=os.path.abspath(instance_path))
+    _root = os.path.dirname(os.path.dirname(__file__))
+    instance_path = os.path.join(_root, 'instance')
+    template_path = os.path.join(_root, 'templates')
+    static_path = os.path.join(_root, 'static')
+    app = Flask(
+        __name__,
+        instance_path=os.path.abspath(instance_path),
+        template_folder=os.path.abspath(template_path),
+        static_folder=os.path.abspath(static_path),
+    )
     app.config.from_object(Config)
 
     # Ensure instance folder exists
