@@ -222,6 +222,10 @@ python test_e2e.py
 
 买完后获得**公网 IP**。
 
+服务器购买完成后，需在其安全组中开放 80(HTTP) 端口。
+
+如果以后以后要配置 HTTPS 域名，也可以顺手加上 443(HTTPS) 端口。
+
 ### 2. 连接到服务器
 
 ```bash
@@ -254,12 +258,33 @@ sudo bash deploy.sh
 
 浏览器访问 `http://你的服务器IP`，能看到首页即为成功。
 
-### 5. 管理员密码
+### 5. 管理员账户密码
+
+默认管理员密码：admin
 
 部署脚本会自动生成随机管理员密码。查看方式：
 
 ```bash
 grep ADMIN_PASSWORD /etc/systemd/system/world-cup-guess.service
+```
+
+如需重置管理员密码，SSH 到服务器，然后运行两段命令：
+
+```bash
+cd /opt/world-cup-guess && source venv/bin/activate
+```
+
+```bash
+python3 << 'EOF'
+from app import create_app
+from models import User, db
+app = create_app()
+with app.app_context():
+    admin = User.query.filter_by(nickname='admin').first()
+    admin.set_password('Ft061114')
+    db.session.commit()
+    print('Password reset successfully!')
+EOF
 ```
 
 ### 费用参考
