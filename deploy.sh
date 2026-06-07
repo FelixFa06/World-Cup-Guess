@@ -14,37 +14,41 @@ echo "=== World Cup Guess - Deployment Script ==="
 echo ""
 
 # 1. System updates & dependencies
-echo "[1/6] Installing system dependencies..."
+echo "[1/7] Installing system dependencies..."
 apt update -y
 apt install -y python3 python3-pip python3-venv nginx
 
 # 2. Create project directory
-echo "[2/6] Setting up project directory..."
+echo "[2/7] Setting up project directory..."
 mkdir -p $PROJECT_DIR
 
 # 3. Copy project files (assuming script runs from project root)
-echo "[3/6] Copying project files..."
+echo "[3/7] Copying project files..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ "$SCRIPT_DIR" != "$PROJECT_DIR" ]; then
     cp -r "$SCRIPT_DIR"/* $PROJECT_DIR/
 fi
 
-# 4. Setup Python virtual environment
-echo "[4/6] Setting up Python environment..."
+# 4. Generate secrets (before init_db so admin password is set correctly)
+echo "[4/7] Generating secrets..."
+export SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
+export ADMIN_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(8))')
+
+# 5. Setup Python virtual environment
+echo "[5/7] Setting up Python environment..."
 python3 -m venv $VENV_DIR
 source $VENV_DIR/bin/activate
 pip install --upgrade pip
 pip install -r $PROJECT_DIR/requirements.txt
-pip install gunicorn
 
-# 5. Initialize database
-echo "[5/6] Initializing database..."
+# 6. Initialize database
+echo "[6/7] Initializing database..."
 cd $PROJECT_DIR
 source $VENV_DIR/bin/activate
 python3 init_db.py
 
-# 6. Setup systemd service
-echo "[6/6] Setting up systemd service..."
+# 7. Setup systemd service
+echo "[7/7] Setting up systemd service..."
 cat > /etc/systemd/system/$APP_NAME.service << EOF
 [Unit]
 Description=World Cup Guess Flask App
@@ -54,8 +58,8 @@ After=network.target
 User=www-data
 Group=www-data
 WorkingDirectory=$PROJECT_DIR
-Environment="SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
-Environment="ADMIN_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+Environment="SECRET_KEY=$SECRET_KEY"
+Environment="ADMIN_PASSWORD=$ADMIN_PASSWORD"
 ExecStart=$VENV_DIR/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 app:app
 Restart=always
 
@@ -110,7 +114,9 @@ echo ""
 echo "Access your app at: http://$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
 echo ""
 echo "Admin nickname: $(grep ADMIN_NICKNAME $PROJECT_DIR/config.py | head -1 | cut -d'"' -f2)"
-echo "Admin password: check config.py or environment variable ADMIN_PASSWORD"
+echo "Admin password: $ADMIN_PASSWORD"
+echo ""
+echo "⚠️  Save the admin password now — it will not be shown again!"
 echo ""
 echo "Useful commands:"
 echo "  systemctl status $APP_NAME   # Check app status"
