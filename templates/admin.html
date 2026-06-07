@@ -369,11 +369,17 @@
 <!-- Registered Users -->
 <div class="admin-section">
     <h3>👥 注册群友 ({{ users|length }}人)</h3>
+    <p style="color:#888;font-size:0.85rem;">点击 × 可删除用户及其所有竞猜数据。此操作不可撤销。</p>
     <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
         {% for u in users %}
-        <span style="background:#f0f0f0;padding:0.25rem 0.75rem;border-radius:16px;font-size:0.9rem;">
+        <span style="background:#f0f0f0;padding:0.25rem 0.5rem 0.25rem 0.75rem;border-radius:16px;font-size:0.9rem;display:inline-flex;align-items:center;gap:0.3rem;">
             {{ u.nickname }}
             <span style="color:#888;font-size:0.75rem;">({{ u.get_total_score() }}分)</span>
+            <button onclick="deleteUser({{ u.id }}, '{{ u.nickname }}')"
+                    title="删除 {{ u.nickname }}"
+                    style="font-size:0.7rem;padding:0 0.3rem;line-height:1.2;background:var(--pico-del-color, #c62828);border-color:var(--pico-del-color, #c62828);border-radius:50%;min-width:1.2rem;text-align:center;color:#fff;cursor:pointer;">
+                ×
+            </button>
         </span>
         {% endfor %}
     </div>
@@ -761,6 +767,23 @@ async function saveUserP3(e) {
     } catch (e) {
         showMsg('admin-p3-msg', '网络错误', false);
     } finally { resetLoading(btn); }
+}
+
+// Delete user
+async function deleteUser(userId, nickname) {
+    if (!confirm(`确认删除用户「${nickname}」？\n\n该用户的所有竞猜数据（项目一/二/三/四预测、收米之星记录）将被一并删除。\n\n此操作不可撤销！`)) return;
+    if (!confirm(`再次确认：真的要删除「${nickname}」吗？`)) return;
+    try {
+        const res = await fetch(`/api/admin/user/${userId}/delete`, {method: 'POST'});
+        const r = await res.json();
+        if (r.ok) {
+            location.reload();
+        } else {
+            alert(r.msg);
+        }
+    } catch (e) {
+        alert('网络错误，请重试');
+    }
 }
 
 async function setProjectStatus(key, value, btn) {

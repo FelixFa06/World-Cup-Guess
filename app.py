@@ -1169,6 +1169,37 @@ def create_app():
         db.session.commit()
         return jsonify({"ok": True, "msg": f"已更新 {user.nickname} 的项目三预测"})
 
+    @app.route("/api/admin/user/<int:user_id>/delete", methods=["POST"])
+    @login_required
+    def api_admin_delete_user(user_id):
+        """Delete a user account and all their related data."""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"ok": False, "msg": "用户不存在"}), 404
+
+        if user.is_admin:
+            return jsonify({"ok": False, "msg": "不能删除管理员账户"}), 400
+
+        nickname = user.nickname
+
+        # Delete all related data (SQLite doesn't enforce FK cascade)
+        Project1Pick.query.filter_by(user_id=user_id).delete()
+        GroupStagePick.query.filter_by(user_id=user_id).delete()
+        Project2Pick.query.filter_by(user_id=user_id).delete()
+        MatchPrediction.query.filter_by(user_id=user_id).delete()
+        DailyStar.query.filter_by(user_id=user_id).delete()
+
+        db.session.delete(user)
+        db.session.commit()
+
+        return jsonify({
+            "ok": True,
+            "msg": f"用户「{nickname}」及其所有竞猜数据已删除",
+        })
+
     @app.route("/api/match/<int:match_id>/predictions")
     def api_match_predictions(match_id):
         """Get all predictions for a match (public after match closed)"""
