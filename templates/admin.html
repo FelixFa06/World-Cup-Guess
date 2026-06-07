@@ -7,7 +7,7 @@
 <!-- Project Status Control -->
 <div class="admin-section">
     <h3>🎛️ 项目填写状态控制</h3>
-    <p style="color:#888;font-size:0.85rem;">手动控制项目一/二/三的开放和截止。不设置时由系统根据比赛时间自动判断。</p>
+    <p style="color:#888;font-size:0.85rem;">控制项目一/二/三的填写开放和截止。默认开放，点击「截止」可关闭填写。</p>
     <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
         {% set status_labels = {'open': '✅ 已开放', 'closed': '⛔ 已截止'} %}
         {% for proj in [
@@ -20,7 +20,7 @@
             <strong>{{ proj[1] }}</strong>
             <div style="margin-top:0.5rem;display:flex;gap:0.3rem;flex-wrap:wrap;align-items:center;">
                 <span style="font-size:0.8rem;color:#888;display:block;width:100%;">
-                    当前: {{ status_labels.get(current_val, '🔄 系统自动判断') }}
+                    当前: {{ status_labels.get(current_val, '✅ 开放中（默认）') }}
                 </span>
                 <button onclick="setProjectStatus('{{ proj[0] }}', 'open', this)"
                         class="{% if current_val == 'open' %}secondary{% endif %}"

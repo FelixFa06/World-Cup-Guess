@@ -8,10 +8,7 @@
 <div class="card">
     <div class="card-header">🏆 项目一：冠军 · 金靴 · 金球 · 金手套 · 最佳年轻球员</div>
     {% if p1_deadline_passed %}
-        <p style="color:#d32f2f;">
-            ⛔ 项目一已截止
-            {% if p1_admin_closed %}（管理员已手动截止）{% else %}（第一场淘汰赛已开始）{% endif %}
-        </p>
+        <p style="color:#d32f2f;">⛔ 项目一已截止（管理员已关闭）</p>
         {% if p1_pick %}
         <p>你的选择：🏆 <strong>{{ p1_pick.champion_team }}</strong> | 👟 <strong>{{ p1_pick.golden_boot_player }}</strong> | 🏅 <strong>{{ p1_pick.golden_ball_player }}</strong> | 🧤 <strong>{{ p1_pick.golden_glove_player }}</strong> | 🌟 <strong>{{ p1_pick.best_young_player }}</strong></p>
         {% endif %}
@@ -59,12 +56,9 @@
     <div class="card-header">📋 项目二：小组赛排名预测</div>
     <p style="color:#888;font-size:0.9rem;">预测每个小组的第一名和第二名。第一和第二<strong>全部猜对且顺序正确</strong>才得分，每组 <strong>1 分</strong>，满分 <strong>12 分</strong>。</p>
     {% if p2_deadline_passed %}
-        <p style="color:#d32f2f;">
-            ⛔ 项目二已截止
-            {% if p2_admin_closed %}（管理员已手动截止）{% else %}（小组赛已开始）{% endif %}
-        </p>
+        <p style="color:#d32f2f;">⛔ 项目二已截止（管理员已关闭）</p>
     {% else %}
-        <p style="color:#888;font-size:0.8rem;">📌 提交截止：小组赛开赛前（2026-06-11）。截止前可修改。</p>
+        <p style="color:#888;font-size:0.8rem;">📌 截止前可修改，由管理员控制截止时间。</p>
         <form id="p2-form">
             <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));gap:0.75rem;">
                 {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
@@ -99,19 +93,12 @@
 <div class="card">
     <div class="card-header">🏟️ 项目三：四强预测</div>
     {% if not p3_open %}
-        {% if p3_admin_closed %}
         <p style="color:#d32f2f;">⛔ 项目三已被管理员截止</p>
         {% if p3_pick %}
         <p>你的选择：A区 <strong>{{ p3_pick.zone_a_team }}</strong> | B区 <strong>{{ p3_pick.zone_b_team }}</strong> | C区 <strong>{{ p3_pick.zone_c_team }}</strong> | D区 <strong>{{ p3_pick.zone_d_team }}</strong></p>
         {% endif %}
-        {% else %}
-        <p style="color:#888;">⏳ 项目三将在16强对阵出炉后开放，敬请期待。</p>
-        {% endif %}
     {% elif p3_deadline_passed %}
-        <p style="color:#d32f2f;">
-            ⛔ 项目三已截止
-            {% if p3_admin_closed %}（管理员已手动截止）{% else %}（16进8已开赛）{% endif %}
-        </p>
+        <p style="color:#d32f2f;">⛔ 项目三已截止（管理员已关闭）</p>
         {% if p3_pick %}
         <p>你的选择：A区 <strong>{{ p3_pick.zone_a_team }}</strong> | B区 <strong>{{ p3_pick.zone_b_team }}</strong> | C区 <strong>{{ p3_pick.zone_c_team }}</strong> | D区 <strong>{{ p3_pick.zone_d_team }}</strong></p>
         {% endif %}

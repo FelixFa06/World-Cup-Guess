@@ -82,10 +82,6 @@ def create_app():
         """Check if admin has manually closed a project."""
         return _get_setting(project_key) == "closed"
 
-    def _is_project_open_by_admin(project_key):
-        """Check if admin has manually opened a project."""
-        return _get_setting(project_key) == "open"
-
     # ── Page Routes ──
 
     @app.route("/")
@@ -148,7 +144,6 @@ def create_app():
         # Project 1 status
         p1_pick = Project1Pick.query.filter_by(user_id=current_user.id).first()
         p1_deadline_passed = _is_p1_deadline_passed()
-        p1_admin_closed = _is_project_closed_by_admin("p1_status")
 
         # Project 2 status (Group stage ranking - NEW)
         p2_group_picks = GroupStagePick.query.filter_by(
@@ -156,13 +151,11 @@ def create_app():
         ).order_by(GroupStagePick.group_name).all()
         p2_group_picks_map = {gp.group_name: gp for gp in p2_group_picks}
         p2_deadline_passed = _is_p2_deadline_passed()
-        p2_admin_closed = _is_project_closed_by_admin("p2_status")
 
         # Project 3 status (Semifinal - was P2)
         p3_pick = Project2Pick.query.filter_by(user_id=current_user.id).first()
         p3_open = _is_p3_open()
         p3_deadline_passed = _is_p3_deadline_passed()
-        p3_admin_closed = _is_project_closed_by_admin("p3_status")
 
         # Project 4: Match predictions (was P3)
         open_matches = Match.query.filter_by(status="open").order_by(
@@ -185,14 +178,11 @@ def create_app():
             "predict.html",
             p1_pick=p1_pick,
             p1_deadline_passed=p1_deadline_passed,
-            p1_admin_closed=p1_admin_closed,
             p2_group_picks_map=p2_group_picks_map,
             p2_deadline_passed=p2_deadline_passed,
-            p2_admin_closed=p2_admin_closed,
             p3_pick=p3_pick,
             p3_open=p3_open,
             p3_deadline_passed=p3_deadline_passed,
-            p3_admin_closed=p3_admin_closed,
             open_matches=open_matches,
             user_predictions=user_predictions,
             all_teams=all_teams,
@@ -1189,43 +1179,20 @@ def create_app():
     # ── Helper Functions ──
 
     def _is_p1_deadline_passed():
-        """P1 deadline: first knockout match kickoff, OR admin closed manually."""
-        if _is_project_closed_by_admin("p1_status"):
-            return True
-        first_ko = Match.query.filter(
-            Match.round_name.in_(["R32", "R16", "QF", "SF", "3RD", "FINAL"])
-        ).order_by(Match.match_time.asc()).first()
-        if first_ko:
-            return utcnow() >= first_ko.match_time.replace(tzinfo=None)
-        return False
+        """P1 deadline: only when admin explicitly closes it."""
+        return _is_project_closed_by_admin("p1_status")
 
     def _is_p2_deadline_passed():
-        """P2 (group stage) deadline: group stage start date, OR admin closed manually."""
-        if _is_project_closed_by_admin("p2_status"):
-            return True
-        from config import Config
-        gs_start = datetime.strptime(Config.GROUP_STAGE_START, "%Y-%m-%d")
-        return utcnow() >= gs_start
+        """P2 deadline: only when admin explicitly closes it."""
+        return _is_project_closed_by_admin("p2_status")
 
     def _is_p3_open():
-        """P3 (semifinal) opens when R32 teams are set AND admin hasn't closed it."""
-        if _is_project_closed_by_admin("p3_status"):
-            return False
-        if _is_project_open_by_admin("p3_status"):
-            return True
-        r32_match = Match.query.filter_by(round_name="R32").first()
-        return r32_match is not None
+        """P3 is always open unless admin explicitly closes it."""
+        return not _is_project_closed_by_admin("p3_status")
 
     def _is_p3_deadline_passed():
-        """P3 (semifinal) deadline: first R32 match kickoff, OR admin closed manually."""
-        if _is_project_closed_by_admin("p3_status"):
-            return True
-        first_r32 = Match.query.filter_by(round_name="R32").order_by(
-            Match.match_time.asc()
-        ).first()
-        if first_r32:
-            return utcnow() >= first_r32.match_time.replace(tzinfo=None)
-        return False
+        """P3 deadline: only when admin explicitly closes it."""
+        return _is_project_closed_by_admin("p3_status")
 
     # ── CLI Commands ──
 
