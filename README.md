@@ -286,7 +286,7 @@ from src.models import User, db
 app = create_app()
 with app.app_context():
     admin = User.query.filter_by(nickname='admin').first()
-    admin.set_password('Ft061114')
+    admin.set_password('你的新密码')
     db.session.commit()
     print('Password reset successfully!')
 EOF
@@ -308,17 +308,6 @@ sudo bash scripts/update.sh
 - 重启服务
 
 不会覆盖 `instance/guess.db`，玩家数据完好。
-
-### 费用参考
-
-| 项目 | 费用 |
-|------|------|
-| 云服务器（1核2G）| 约 100-300 元/年（新用户）|
-| 带宽流量 | 约 5-15 元/月 |
-| 域名（可选）| 约 5-50 元/年 |
-| **一个月总计** | **不到 100 元** |
-
-> 如果只用世界杯期间（一个月），买按量付费，用完释放即可。
 
 ## 管理后台操作
 
