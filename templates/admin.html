@@ -189,7 +189,7 @@
     </form>
 
     <h3 style="margin-top:2rem;">📋 结算项目二（小组赛排名）</h3>
-    <p style="color:#888;font-size:0.85rem;">填入每个小组最终的第一名和第二名。</p>
+    <p style="color:#888;font-size:0.85rem;">填入已出炉小组的第一名和第二名，留空的小组本批次不结算。</p>
     <form id="score-p2-form">
         <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));gap:0.5rem;">
             {% for g in ['A','B','C','D','E','F','G','H','I','J','K','L'] %}
@@ -510,23 +510,32 @@ document.getElementById('score-p1-form').addEventListener('submit', async (e) =>
     }
 });
 
-// Score P2 (Group stage)
+// Score P2 (Group stage) — 支持分批结算
 document.getElementById('score-p2-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
-    if (!confirm('确认结算项目二？所有用户的分数将被更新且不可撤销。')) return;
     const groupNames = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const groups = [];
     for (const g of groupNames) {
         const first = document.getElementById(`gs-${g}-first`).value;
         const second = document.getElementById(`gs-${g}-second`).value;
-        if (!first || !second) {
-            showMsg('score-p2-msg', `请选择${g}组的第一和第二名`, false);
+        // 两者都填了 → 加入提交
+        if (first && second) {
+            groups.push({group_name: g, first_place: first, second_place: second});
+        } else if (first || second) {
+            // 只填了一个 → 报错
+            showMsg('score-p2-msg', `请将${g}组的第一和第二名都填上，或都留空`, false);
             return;
         }
-        groups.push({group_name: g, first_place: first, second_place: second});
+        // 两者都空 → 跳过，本批次不结算该组
     }
+    if (groups.length === 0) {
+        showMsg('score-p2-msg', '请至少填写一个小组的结果', false);
+        return;
+    }
+    const groupList = groups.map(g => g.group_name + '组').join('、');
+    if (!confirm(`确认结算以下小组？\n${groupList}\n\n这些小组的分数将被更新且不可撤销。`)) return;
     setLoading(btn, '结算中...');
     try {
         const res = await fetch('/api/admin/score-p2', {

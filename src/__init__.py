@@ -841,8 +841,8 @@ def create_app():
         data = request.get_json()
         groups = data.get("groups", [])  # [{group_name, first_place, second_place}, ...]
 
-        if not groups or len(groups) != 12:
-            return jsonify({"ok": False, "msg": "请提供全部12个小组的结果"}), 400
+        if not groups or len(groups) < 1:
+            return jsonify({"ok": False, "msg": "请至少提供一个小组的结果"}), 400
 
         # Build team lookup for validation
         all_teams = Team.query.all()
@@ -881,7 +881,9 @@ def create_app():
                 count += 1
 
         db.session.commit()
-        return jsonify({"ok": True, "msg": f"项目二（小组赛排名）已结算，{count} 条预测已更新"})
+        submitted_groups = list(results.keys())
+        submitted_groups.sort()
+        return jsonify({"ok": True, "msg": f"项目二（小组赛排名）已结算 {', '.join(submitted_groups)} 组，{count} 条预测已更新"})
 
     @app.route("/api/admin/score-p3", methods=["POST"])
     @login_required
