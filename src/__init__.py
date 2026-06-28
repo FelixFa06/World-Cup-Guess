@@ -1249,6 +1249,36 @@ def create_app():
             "password": user.password_text or "(未存储明文密码)",
         })
 
+    @app.route("/api/admin/user/<int:user_id>/reset-password", methods=["POST"])
+    @login_required
+    def api_admin_reset_password(user_id):
+        """Reset a user's password (admin only)."""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"ok": False, "msg": "用户不存在"}), 404
+
+        if user.is_admin:
+            return jsonify({"ok": False, "msg": "不能重置管理员密码"}), 400
+
+        data = request.get_json()
+        new_password = data.get("password", "").strip()
+
+        if not new_password or len(new_password) < 3:
+            return jsonify({"ok": False, "msg": "新密码至少3位"}), 400
+
+        user.set_password(new_password)
+        db.session.commit()
+
+        return jsonify({
+            "ok": True,
+            "msg": f"用户「{user.nickname}」的密码已重置为「{new_password}」",
+            "nickname": user.nickname,
+            "password": new_password,
+        })
+
     @app.route("/api/match/<int:match_id>/predictions")
     def api_match_predictions(match_id):
         """Get all predictions for a match (public after match closed)"""

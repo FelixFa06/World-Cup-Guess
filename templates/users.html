@@ -122,6 +122,11 @@
         <span style="background:#f0f0f0;padding:0.25rem 0.5rem 0.25rem 0.75rem;border-radius:16px;font-size:0.9rem;display:inline-flex;align-items:center;gap:0.3rem;">
             {{ u.nickname }}
             <span style="color:#888;font-size:0.75rem;">({{ u.get_total_score() }}分)</span>
+            <button onclick="resetPassword({{ u.id }}, '{{ u.nickname }}')"
+                    title="重置 {{ u.nickname }} 的密码"
+                    style="font-size:0.7rem;padding:0 0.3rem;line-height:1.2;background:#ff9800;border-color:#ff9800;border-radius:50%;min-width:1.2rem;text-align:center;color:#fff;cursor:pointer;">
+                🔑
+            </button>
             <button onclick="deleteUser({{ u.id }}, '{{ u.nickname }}')"
                     title="删除 {{ u.nickname }}"
                     style="font-size:0.7rem;padding:0 0.3rem;line-height:1.2;background:var(--pico-del-color, #c62828);border-color:var(--pico-del-color, #c62828);border-radius:50%;min-width:1.2rem;text-align:center;color:#fff;cursor:pointer;">
@@ -380,6 +385,38 @@ async function saveUserP3(e) {
     } catch (e) {
         showMsg('admin-p3-msg', '网络错误', false);
     } finally { resetLoading(btn); }
+}
+
+// Reset password
+async function resetPassword(userId, nickname) {
+    const newPwd = prompt(`请输入「${nickname}」的新密码（至少3位）：`);
+    if (!newPwd) return;
+
+    if (newPwd.length < 3) {
+        alert('密码至少3位');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/admin/user/${userId}/reset-password`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({password: newPwd})
+        });
+        const r = await res.json();
+        if (r.ok) {
+            // Also populate the password lookup fields for convenience
+            document.getElementById('pwd-nickname').value = r.nickname;
+            document.getElementById('pwd-result').value = r.password;
+            document.getElementById('pwd-result').style.background = '#e8f5e9';
+            document.getElementById('pwd-copy-btn').style.display = 'inline-block';
+            alert(r.msg);
+        } else {
+            alert(r.msg);
+        }
+    } catch (e) {
+        alert('网络错误，请重试');
+    }
 }
 
 // Delete user
