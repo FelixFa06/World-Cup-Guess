@@ -1,0 +1,330 @@
+{% extends "layout.html" %}
+{% block title %}用户管理 - 世界杯竞猜{% endblock %}
+{% block content %}
+
+<h2>👥 用户管理</h2>
+
+<!-- Edit User Picks -->
+<div class="admin-section">
+    <h3>✏️ 编辑群友竞猜</h3>
+    <p style="color:#888;font-size:0.85rem;">选择一名群友，查看和修改其项目一/二/三的竞猜内容。</p>
+
+    <div style="margin-bottom:1rem;">
+        <label for="edit-user-select">选择群友</label>
+        <select id="edit-user-select" onchange="loadUserPicks()">
+            <option value="">-- 选择 --</option>
+            {% for u in users %}
+            <option value="{{ u.id }}">{{ u.nickname }} ({{ u.get_total_score() }}分)</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div id="user-picks-panel" style="display:none;">
+        <!-- P1 -->
+        <h4>🏆 项目一（冠军+奖项）</h4>
+        <form id="admin-p1-form" onsubmit="saveUserP1(event)">
+            <input type="hidden" id="admin-p1-user-id">
+            <div class="grid">
+                <div>
+                    <label>🏆 冠军球队</label>
+                    <input type="text" id="admin-p1-champion" list="teams-all-users" placeholder="搜索选择..." autocomplete="off">
+                </div>
+                <div>
+                    <label>👟 金靴得主</label>
+                    <input type="text" id="admin-p1-boot" placeholder="球员姓名">
+                </div>
+                <div>
+                    <label>🏅 金球奖得主</label>
+                    <input type="text" id="admin-p1-ball" placeholder="球员姓名">
+                </div>
+                <div>
+                    <label>🧤 金手套得主</label>
+                    <input type="text" id="admin-p1-glove" placeholder="球员姓名">
+                </div>
+                <div>
+                    <label>🌟 最佳年轻球员</label>
+                    <input type="text" id="admin-p1-young" placeholder="球员姓名">
+                </div>
+            </div>
+            <button type="submit" style="font-size:0.85rem;">💾 保存项目一</button>
+            <span id="admin-p1-msg" style="margin-left:0.5rem;font-size:0.85rem;"></span>
+        </form>
+        <datalist id="teams-all-users">
+            {% for t in all_teams %}
+            <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }} ({{ t.group_name }}组)</option>
+            {% endfor %}
+        </datalist>
+
+        <!-- P2 -->
+        <h4 style="margin-top:1.5rem;">📋 项目二（小组赛排名）</h4>
+        <form id="admin-p2-form" onsubmit="saveUserP2(event)">
+            <input type="hidden" id="admin-p2-user-id">
+            <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));gap:0.5rem;" id="admin-p2-groups"></div>
+            <button type="submit" style="margin-top:0.75rem;font-size:0.85rem;">💾 保存项目二</button>
+            <span id="admin-p2-msg" style="margin-left:0.5rem;font-size:0.85rem;"></span>
+        </form>
+
+        <!-- P3 -->
+        <h4 style="margin-top:1.5rem;">🏟️ 项目三（四强）</h4>
+        <form id="admin-p3-form" onsubmit="saveUserP3(event)">
+            <input type="hidden" id="admin-p3-user-id">
+            <div class="grid">
+                <div><label>🔴 A区</label><input type="text" id="admin-p3-zone-a" list="teams-zone-A-users" autocomplete="off"></div>
+                <div><label>🟡 B区</label><input type="text" id="admin-p3-zone-b" list="teams-zone-B-users" autocomplete="off"></div>
+                <div><label>🟢 C区</label><input type="text" id="admin-p3-zone-c" list="teams-zone-C-users" autocomplete="off"></div>
+                <div><label>🔵 D区</label><input type="text" id="admin-p3-zone-d" list="teams-zone-D-users" autocomplete="off"></div>
+            </div>
+            {% for z in ['A','B','C','D'] %}
+            <datalist id="teams-zone-{{ z }}-users">
+                {% for t in all_teams if t.zone == z %}
+                <option value="{{ t.name }}">{{ t.flag_emoji }} {{ t.name }} ({{ t.group_name }}组)</option>
+                {% endfor %}
+            </datalist>
+            {% endfor %}
+            <button type="submit" style="margin-top:0.5rem;font-size:0.85rem;">💾 保存项目三</button>
+            <span id="admin-p3-msg" style="margin-left:0.5rem;font-size:0.85rem;"></span>
+        </form>
+    </div>
+</div>
+
+<!-- Registered Users -->
+<div class="admin-section">
+    <h3>👥 注册群友 ({{ users|length }}人)</h3>
+    <p style="color:#888;font-size:0.85rem;">点击 × 可删除用户及其所有竞猜数据。此操作不可撤销。</p>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+        {% for u in users %}
+        <span style="background:#f0f0f0;padding:0.25rem 0.5rem 0.25rem 0.75rem;border-radius:16px;font-size:0.9rem;display:inline-flex;align-items:center;gap:0.3rem;">
+            {{ u.nickname }}
+            <span style="color:#888;font-size:0.75rem;">({{ u.get_total_score() }}分)</span>
+            <button onclick="resetPassword({{ u.id }}, '{{ u.nickname }}')"
+                    title="重置 {{ u.nickname }} 的密码"
+                    style="font-size:0.7rem;padding:0 0.3rem;line-height:1.2;background:#ff9800;border-color:#ff9800;border-radius:50%;min-width:1.2rem;text-align:center;color:#fff;cursor:pointer;">
+                🔑
+            </button>
+            <button onclick="deleteUser({{ u.id }}, '{{ u.nickname }}')"
+                    title="删除 {{ u.nickname }}"
+                    style="font-size:0.7rem;padding:0 0.3rem;line-height:1.2;background:var(--pico-del-color, #c62828);border-color:var(--pico-del-color, #c62828);border-radius:50%;min-width:1.2rem;text-align:center;color:#fff;cursor:pointer;">
+                ×
+            </button>
+        </span>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+// ── Team name validation ──
+
+function getValidTeamNamesUsers() {
+    const names = new Set();
+    document.querySelectorAll('#teams-all-users option, [id^="teams-zone-"] option').forEach(opt => {
+        if (opt.value) names.add(opt.value);
+    });
+    return names;
+}
+function isValidTeamUsers(name) {
+    return getValidTeamNamesUsers().has(name);
+}
+
+// ── User Pick Editing ──
+
+async function loadUserPicks() {
+    const userId = document.getElementById('edit-user-select').value;
+    const panel = document.getElementById('user-picks-panel');
+    if (!userId) { panel.style.display = 'none'; return; }
+    panel.style.display = 'block';
+
+    // Load P1
+    try {
+        const r1 = await fetch(`/api/admin/user/${userId}/p1`).then(r => r.json());
+        document.getElementById('admin-p1-user-id').value = userId;
+        if (r1.ok && r1.pick) {
+            document.getElementById('admin-p1-champion').value = r1.pick.champion || '';
+            document.getElementById('admin-p1-boot').value = r1.pick.golden_boot || '';
+            document.getElementById('admin-p1-ball').value = r1.pick.golden_ball || '';
+            document.getElementById('admin-p1-glove').value = r1.pick.golden_glove || '';
+            document.getElementById('admin-p1-young').value = r1.pick.best_young_player || '';
+        } else {
+            ['champion','boot','ball','glove','young'].forEach(f => document.getElementById('admin-p1-'+f).value = '');
+        }
+    } catch (e) { /* ignore */ }
+
+    // Load P2
+    try {
+        const r2 = await fetch(`/api/admin/user/${userId}/p2`).then(r => r.json());
+        document.getElementById('admin-p2-user-id').value = userId;
+        const container = document.getElementById('admin-p2-groups');
+        const groupNames = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+        const picksMap = {};
+        if (r2.ok && r2.groups) r2.groups.forEach(g => { picksMap[g.group_name] = g; });
+        const groupTeams = {};
+        document.querySelectorAll('#teams-all-users option').forEach(opt => {
+            const m = opt.textContent.match(/\(([A-L])组\)/);
+            if (m) {
+                if (!groupTeams[m[1]]) groupTeams[m[1]] = [];
+                groupTeams[m[1]].push({value: opt.value, label: opt.textContent});
+            }
+        });
+        container.innerHTML = groupNames.map(g => {
+            const p = picksMap[g] || {};
+            const teams = groupTeams[g] || [];
+            const options = ['<option value="">-- 选择 --</option>']
+                .concat(teams.map(t => `<option value="${t.value}" ${p.first_place === t.value ? 'selected' : ''}>${t.label}</option>`))
+                .join('');
+            const options2 = ['<option value="">-- 选择 --</option>']
+                .concat(teams.map(t => `<option value="${t.value}" ${p.second_place === t.value ? 'selected' : ''}>${t.label}</option>`))
+                .join('');
+            return `<div style="border:1px solid #ddd;border-radius:6px;padding:0.4rem 0.6rem;">
+                <strong>${g}组</strong>
+                <select id="admin-p2-${g}-first" style="font-size:0.8rem;padding:0.2rem;margin-top:0.2rem;width:100%;">${options}</select>
+                <select id="admin-p2-${g}-second" style="font-size:0.8rem;padding:0.2rem;margin-top:0.15rem;width:100%;">${options2}</select>
+            </div>`;
+        }).join('');
+    } catch (e) { /* ignore */ }
+
+    // Load P3
+    try {
+        const r3 = await fetch(`/api/admin/user/${userId}/p3`).then(r => r.json());
+        document.getElementById('admin-p3-user-id').value = userId;
+        if (r3.ok && r3.pick) {
+            document.getElementById('admin-p3-zone-a').value = r3.pick.zone_a || '';
+            document.getElementById('admin-p3-zone-b').value = r3.pick.zone_b || '';
+            document.getElementById('admin-p3-zone-c').value = r3.pick.zone_c || '';
+            document.getElementById('admin-p3-zone-d').value = r3.pick.zone_d || '';
+        } else {
+            ['zone-a','zone-b','zone-c','zone-d'].forEach(f => document.getElementById('admin-p3-'+f).value = '');
+        }
+    } catch (e) { /* ignore */ }
+}
+
+async function saveUserP1(e) {
+    e.preventDefault();
+    const userId = document.getElementById('admin-p1-user-id').value;
+    const btn = e.target.querySelector('button[type="submit"]');
+    const champion = document.getElementById('admin-p1-champion').value.trim();
+    if (champion && !isValidTeamUsers(champion)) {
+        showMsg('admin-p1-msg', `「${champion}」不是有效球队，请从列表中选择`, false);
+        return;
+    }
+    const data = {
+        champion: champion,
+        golden_boot: document.getElementById('admin-p1-boot').value.trim(),
+        golden_ball: document.getElementById('admin-p1-ball').value.trim(),
+        golden_glove: document.getElementById('admin-p1-glove').value.trim(),
+        best_young_player: document.getElementById('admin-p1-young').value.trim(),
+    };
+    setLoading(btn, '保存中...');
+    try {
+        const res = await fetch(`/api/admin/user/${userId}/p1`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const r = await res.json();
+        showMsg('admin-p1-msg', r.msg, r.ok);
+    } catch (e) {
+        showMsg('admin-p1-msg', '网络错误', false);
+    } finally { resetLoading(btn); }
+}
+
+async function saveUserP2(e) {
+    e.preventDefault();
+    const userId = document.getElementById('admin-p2-user-id').value;
+    const btn = e.target.querySelector('button[type="submit"]');
+    const groupNames = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+    const groups = groupNames.map(g => ({
+        group_name: g,
+        first_place: document.getElementById(`admin-p2-${g}-first`).value.trim(),
+        second_place: document.getElementById(`admin-p2-${g}-second`).value.trim(),
+    }));
+    setLoading(btn, '保存中...');
+    try {
+        const res = await fetch(`/api/admin/user/${userId}/p2`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({groups})
+        });
+        const r = await res.json();
+        showMsg('admin-p2-msg', r.msg, r.ok);
+    } catch (e) {
+        showMsg('admin-p2-msg', '网络错误', false);
+    } finally { resetLoading(btn); }
+}
+
+async function saveUserP3(e) {
+    e.preventDefault();
+    const userId = document.getElementById('admin-p3-user-id').value;
+    const btn = e.target.querySelector('button[type="submit"]');
+    const zoneA = document.getElementById('admin-p3-zone-a').value.trim();
+    const zoneB = document.getElementById('admin-p3-zone-b').value.trim();
+    const zoneC = document.getElementById('admin-p3-zone-c').value.trim();
+    const zoneD = document.getElementById('admin-p3-zone-d').value.trim();
+    const data = { zone_a: zoneA, zone_b: zoneB, zone_c: zoneC, zone_d: zoneD };
+    for (const [label, val] of [['A区', zoneA], ['B区', zoneB], ['C区', zoneC], ['D区', zoneD]]) {
+        if (val && !isValidTeamUsers(val)) {
+            showMsg('admin-p3-msg', `「${val}」不是有效球队（${label}），请从列表中选择`, false);
+            return;
+        }
+    }
+    setLoading(btn, '保存中...');
+    try {
+        const res = await fetch(`/api/admin/user/${userId}/p3`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const r = await res.json();
+        showMsg('admin-p3-msg', r.msg, r.ok);
+    } catch (e) {
+        showMsg('admin-p3-msg', '网络错误', false);
+    } finally { resetLoading(btn); }
+}
+
+// Reset password
+async function resetPassword(userId, nickname) {
+    const newPwd = prompt(`请输入「${nickname}」的新密码（至少3位）：`);
+    if (!newPwd) return;
+
+    if (newPwd.length < 3) {
+        alert('密码至少3位');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/admin/user/${userId}/reset-password`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({password: newPwd})
+        });
+        const r = await res.json();
+        alert(r.msg);
+    } catch (e) {
+        alert('网络错误，请重试');
+    }
+}
+
+// Delete user
+async function deleteUser(userId, nickname) {
+    if (!confirm(`确认删除用户「${nickname}」？\n\n该用户的所有竞猜数据（项目一/二/三/四预测、收米之星记录）将被一并删除。\n\n此操作不可撤销！`)) return;
+    if (!confirm(`再次确认：真的要删除「${nickname}」吗？`)) return;
+    try {
+        const res = await fetch(`/api/admin/user/${userId}/delete`, {method: 'POST'});
+        const r = await res.json();
+        if (r.ok) {
+            location.reload();
+        } else {
+            alert(r.msg);
+        }
+    } catch (e) {
+        alert('网络错误，请重试');
+    }
+}
+
+function showMsg(id, msg, ok) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.color = ok ? '#1e7e34' : '#d32f2f';
+    setTimeout(() => { el.textContent = ''; }, 5000);
+}
+</script>
+
+{% endblock %}

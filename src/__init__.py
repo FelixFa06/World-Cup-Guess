@@ -365,7 +365,6 @@ def create_app():
             return redirect(url_for("index"))
 
         matches = Match.query.order_by(Match.match_time.asc()).all()
-        users = User.query.filter_by(is_admin=False).order_by(User.nickname).all()
         all_teams = Team.query.order_by(Team.group_name, Team.name).all()
 
         # Current project status settings
@@ -378,9 +377,24 @@ def create_app():
         return render_template(
             "admin.html",
             matches=matches,
-            users=users,
             all_teams=all_teams,
             project_settings=project_settings,
+        )
+
+    @app.route("/users")
+    @login_required
+    def users_page():
+        if not current_user.is_admin:
+            flash("无权访问用户管理", "error")
+            return redirect(url_for("index"))
+
+        users = User.query.filter_by(is_admin=False).order_by(User.nickname).all()
+        all_teams = Team.query.order_by(Team.group_name, Team.name).all()
+
+        return render_template(
+            "users.html",
+            users=users,
+            all_teams=all_teams,
         )
 
     # ── API Routes: Auth ──
@@ -1209,6 +1223,36 @@ def create_app():
         return jsonify({
             "ok": True,
             "msg": f"用户「{nickname}」及其所有竞猜数据已删除",
+        })
+
+    @app.route("/api/admin/user/<int:user_id>/reset-password", methods=["POST"])
+    @login_required
+    def api_admin_reset_password(user_id):
+        """Reset a user's password (admin only)."""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"ok": False, "msg": "用户不存在"}), 404
+
+        if user.is_admin:
+            return jsonify({"ok": False, "msg": "不能重置管理员密码"}), 400
+
+        data = request.get_json()
+        new_password = data.get("password", "").strip()
+
+        if not new_password or len(new_password) < 3:
+            return jsonify({"ok": False, "msg": "新密码至少3位"}), 400
+
+        user.set_password(new_password)
+        db.session.commit()
+
+        return jsonify({
+            "ok": True,
+            "msg": f"用户「{user.nickname}」的密码已重置为「{new_password}」",
+            "nickname": user.nickname,
+            "password": new_password,
         })
 
     @app.route("/api/match/<int:match_id>/predictions")
