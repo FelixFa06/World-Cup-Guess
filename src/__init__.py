@@ -365,7 +365,6 @@ def create_app():
             return redirect(url_for("index"))
 
         matches = Match.query.order_by(Match.match_time.asc()).all()
-        users = User.query.filter_by(is_admin=False).order_by(User.nickname).all()
         all_teams = Team.query.order_by(Team.group_name, Team.name).all()
 
         # Current project status settings
@@ -378,9 +377,24 @@ def create_app():
         return render_template(
             "admin.html",
             matches=matches,
-            users=users,
             all_teams=all_teams,
             project_settings=project_settings,
+        )
+
+    @app.route("/users")
+    @login_required
+    def users_page():
+        if not current_user.is_admin:
+            flash("无权访问用户管理", "error")
+            return redirect(url_for("index"))
+
+        users = User.query.filter_by(is_admin=False).order_by(User.nickname).all()
+        all_teams = Team.query.order_by(Team.group_name, Team.name).all()
+
+        return render_template(
+            "users.html",
+            users=users,
+            all_teams=all_teams,
         )
 
     # ── API Routes: Auth ──
@@ -1209,6 +1223,30 @@ def create_app():
         return jsonify({
             "ok": True,
             "msg": f"用户「{nickname}」及其所有竞猜数据已删除",
+        })
+
+    @app.route("/api/admin/user-password", methods=["GET"])
+    @login_required
+    def api_admin_user_password():
+        """Look up a user's password by nickname (admin only)."""
+        if not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "无权操作"}), 403
+
+        nickname = request.args.get("nickname", "").strip()
+        if not nickname:
+            return jsonify({"ok": False, "msg": "请输入用户昵称"}), 400
+
+        user = User.query.filter_by(nickname=nickname).first()
+        if not user:
+            return jsonify({"ok": False, "msg": f"未找到用户「{nickname}」"}), 404
+
+        if user.is_admin:
+            return jsonify({"ok": False, "msg": "不能查询管理员密码"}), 400
+
+        return jsonify({
+            "ok": True,
+            "nickname": user.nickname,
+            "password": user.password_text or "(未存储明文密码)",
         })
 
     @app.route("/api/match/<int:match_id>/predictions")

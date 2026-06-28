@@ -33,11 +33,13 @@ sudo bash scripts/deploy.sh
 ```
 Flask 应用 (src/__init__.py)
   ├── 页面路由 → Jinja2 模板 (templates/)
+  │   ├── admin.html → /admin 管理后台（比赛、比分、结算、项目控制）
+  │   └── users.html → /users 用户管理（密码查询、编辑竞猜、账户管理）
   ├── API 路由 → JSON (用户操作 + 管理员操作)
   └── 算分引擎 (src/scoring.py) → 纯函数，无副作用
 
 SQLAlchemy ORM (src/models.py) → SQLite (instance/guess.db)
-  ├── User / Match / Project1Pick / GroupStagePick / Project2Pick / MatchPrediction / DailyStar / Team / SystemSetting
+  ├── User (含 password_text 明文密码字段) / Match / Project1Pick / GroupStagePick / Project2Pick / MatchPrediction / DailyStar / Team / SystemSetting
 ```
 
 ### ⚠️ 模型命名注意
@@ -70,12 +72,22 @@ src/config.py 中配置项前缀也已重命名：`P2_GROUP_PTS` 表示项目二
 - **比赛删除**：管理员可通过 `/api/admin/match/<id>/delete` 删除比赛，关联的预测记录会被级联清除。
 - **截止控制**：项目一/二/三默认开放，由管理员手动点击「截止」关闭；项目四每场开赛前自动截止。
 - **管理员账号**：`src/config.py` 中 `ADMIN_NICKNAME` / `ADMIN_PASSWORD`，初始化时自动创建。`is_admin=True` 的用户不参与竞猜。
+- **密码明文存储**：`User.password_text` 字段存储明文密码，`set_password()` 同步写入 hash + plaintext，供管理员在 `/users` 页面查询用户忘记的密码。查询 API 禁止返回管理员密码。
 - **前端零构建**：Pico.css 从 CDN 加载，无 npm/webpack。移动端优先。
 - **绿色主题**：主题色 `#2e7d32`（球场绿），`style.css` 中用 `!important` 强制覆盖 Pico.css 默认蓝色按钮。自定义 CSS 变量 `--primary` 等需在 `:root` 和 Pico 变量上同步设置。
 - **加载状态**：`layout.html` 提供了 `setLoading(btn, text)` / `resetLoading(btn)` 工具函数，表单提交时可用。
 - **instance/ 目录不进 git**：数据库文件在 `.gitignore` 中排除。
 
 ## 新增功能
+
+### 用户管理页面 `/users`
+
+- 仅管理员可访问，提供三个功能模块：
+  - **密码查询**：输入用户昵称，查询对应用户的明文密码。API 端点 `GET /api/admin/user-password?nickname=xxx`。
+  - **编辑群友竞猜**：从管理页面迁移至此，支持查看和修改任意用户的项目一/二/三预测。
+  - **注册群友管理**：查看所有注册用户及其总分，支持删除用户（含所有关联数据）。
+- 用户密码通过 `User.password_text` 字段存储明文，`set_password()` 方法同步写入。
+- 模板 `templates/users.html`，导航栏已添加「用户」链接（管理员可见）。
 
 ### 国旗图标兼容（flagcdn.com）
 
