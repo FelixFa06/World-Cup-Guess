@@ -4,32 +4,6 @@
 
 <h2>👥 用户管理</h2>
 
-<!-- Password Lookup -->
-<div class="admin-section">
-    <h3>🔑 密码查询</h3>
-    <p style="color:#888;font-size:0.85rem;">输入用户昵称，查询对应用户的密码。</p>
-    <div class="grid" style="grid-template-columns: 1fr 1fr;gap:1rem;">
-        <div>
-            <label for="pwd-nickname">用户昵称</label>
-            <input type="text" id="pwd-nickname" placeholder="输入用户昵称..." list="users-nickname-list" autocomplete="off">
-            <datalist id="users-nickname-list">
-                {% for u in users %}
-                <option value="{{ u.nickname }}">
-                {% endfor %}
-            </datalist>
-        </div>
-        <div>
-            <label for="pwd-result">密码</label>
-            <input type="text" id="pwd-result" placeholder="查询结果将显示在此..." readonly style="background:#f9f9f9;">
-        </div>
-    </div>
-    <div style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
-        <button onclick="lookupPassword()" id="pwd-lookup-btn">🔍 查询密码</button>
-        <button onclick="copyPassword()" id="pwd-copy-btn" style="display:none;">📋 复制密码</button>
-        <span id="pwd-msg" style="font-size:0.85rem;"></span>
-    </div>
-</div>
-
 <!-- Edit User Picks -->
 <div class="admin-section">
     <h3>✏️ 编辑群友竞猜</h3>
@@ -138,88 +112,6 @@
 </div>
 
 <script>
-// ── Password Lookup ──
-
-async function lookupPassword() {
-    const nickname = document.getElementById('pwd-nickname').value.trim();
-    const resultInput = document.getElementById('pwd-result');
-    const copyBtn = document.getElementById('pwd-copy-btn');
-    const btn = document.getElementById('pwd-lookup-btn');
-
-    if (!nickname) {
-        showMsg('pwd-msg', '请输入用户昵称', false);
-        return;
-    }
-
-    setLoading(btn, '查询中...');
-    resultInput.value = '';
-    copyBtn.style.display = 'none';
-    showMsg('pwd-msg', '', true);
-
-    try {
-        const res = await fetch(`/api/admin/user-password?nickname=${encodeURIComponent(nickname)}`);
-        const r = await res.json();
-        if (r.ok) {
-            resultInput.value = r.password;
-            resultInput.style.background = '#e8f5e9';
-            copyBtn.style.display = 'inline-block';
-            showMsg('pwd-msg', '查询成功', true);
-        } else {
-            resultInput.value = '';
-            resultInput.style.background = '#f9f9f9';
-            copyBtn.style.display = 'none';
-            showMsg('pwd-msg', r.msg, false);
-        }
-    } catch (e) {
-        showMsg('pwd-msg', '网络错误，请重试', false);
-    } finally {
-        resetLoading(btn);
-    }
-}
-
-function copyPassword() {
-    const resultInput = document.getElementById('pwd-result');
-    const password = resultInput.value;
-    if (!password) return;
-
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(password).then(() => {
-            const btn = document.getElementById('pwd-copy-btn');
-            const origText = btn.textContent;
-            btn.textContent = '✅ 已复制';
-            setTimeout(() => { btn.textContent = origText; }, 1500);
-        }).catch(() => {
-            fallbackCopy(resultInput);
-        });
-    } else {
-        fallbackCopy(resultInput);
-    }
-}
-
-function fallbackCopy(inputEl) {
-    inputEl.removeAttribute('readonly');
-    inputEl.select();
-    inputEl.setSelectionRange(0, 99999);
-    try {
-        document.execCommand('copy');
-        const btn = document.getElementById('pwd-copy-btn');
-        const origText = btn.textContent;
-        btn.textContent = '✅ 已复制';
-        setTimeout(() => { btn.textContent = origText; }, 1500);
-    } catch (e) {
-        alert('复制失败，请手动选择并复制密码');
-    }
-    inputEl.setAttribute('readonly', '');
-}
-
-// Allow Enter key to trigger lookup in nickname input
-document.getElementById('pwd-nickname').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        lookupPassword();
-    }
-});
-
 // ── Team name validation ──
 
 function getValidTeamNamesUsers() {
@@ -404,16 +296,7 @@ async function resetPassword(userId, nickname) {
             body: JSON.stringify({password: newPwd})
         });
         const r = await res.json();
-        if (r.ok) {
-            // Also populate the password lookup fields for convenience
-            document.getElementById('pwd-nickname').value = r.nickname;
-            document.getElementById('pwd-result').value = r.password;
-            document.getElementById('pwd-result').style.background = '#e8f5e9';
-            document.getElementById('pwd-copy-btn').style.display = 'inline-block';
-            alert(r.msg);
-        } else {
-            alert(r.msg);
-        }
+        alert(r.msg);
     } catch (e) {
         alert('网络错误，请重试');
     }

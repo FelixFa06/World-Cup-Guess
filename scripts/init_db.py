@@ -29,14 +29,6 @@ with app.app_context():
     except Exception:
         print("Column country_code already exists (or migration skipped).")
 
-    # Migrate: add password_text column to users if missing
-    try:
-        db.session.execute(text("ALTER TABLE users ADD COLUMN password_text VARCHAR(100)"))
-        db.session.commit()
-        print("Column password_text added to users table.")
-    except Exception:
-        print("Column password_text already exists (or migration skipped).")
-
     admin = User.query.filter_by(nickname=Config.ADMIN_NICKNAME).first()
     if not admin:
         admin = User(nickname=Config.ADMIN_NICKNAME, is_admin=True)

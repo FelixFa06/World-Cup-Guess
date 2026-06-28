@@ -1225,30 +1225,6 @@ def create_app():
             "msg": f"用户「{nickname}」及其所有竞猜数据已删除",
         })
 
-    @app.route("/api/admin/user-password", methods=["GET"])
-    @login_required
-    def api_admin_user_password():
-        """Look up a user's password by nickname (admin only)."""
-        if not current_user.is_admin:
-            return jsonify({"ok": False, "msg": "无权操作"}), 403
-
-        nickname = request.args.get("nickname", "").strip()
-        if not nickname:
-            return jsonify({"ok": False, "msg": "请输入用户昵称"}), 400
-
-        user = User.query.filter_by(nickname=nickname).first()
-        if not user:
-            return jsonify({"ok": False, "msg": f"未找到用户「{nickname}」"}), 404
-
-        if user.is_admin:
-            return jsonify({"ok": False, "msg": "不能查询管理员密码"}), 400
-
-        return jsonify({
-            "ok": True,
-            "nickname": user.nickname,
-            "password": user.password_text or "(未存储明文密码)",
-        })
-
     @app.route("/api/admin/user/<int:user_id>/reset-password", methods=["POST"])
     @login_required
     def api_admin_reset_password(user_id):
