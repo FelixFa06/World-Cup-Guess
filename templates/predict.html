@@ -156,7 +156,7 @@
         <p style="color:#888;font-size:0.9rem;">以下比赛正在接受预测。注意：只考虑常规时间比分。</p>
         {% for match in open_matches %}
         {% set pred = user_predictions.get(match.id) %}
-        <div class="match-card">
+        <div class="match-card" id="match-{{ match.id }}">
             <span class="round-badge {% if match.is_final %}final{% endif %}">{{ match.round_name }}</span>
             <span class="match-teams">{{ match.team_a | team_flag | safe }} vs {{ match.team_b | team_flag | safe }}</span>
             <span class="match-info">{{ match.match_time.strftime('%m/%d %H:%M') }}</span>
@@ -338,6 +338,19 @@ function showMsg(id, msg, color) {
     el.style.color = color === 'green' ? '#1e7e34' : color === 'red' ? '#d32f2f' : '#2e7d32';
     setTimeout(() => { el.textContent = ''; }, 3000);
 }
+
+// Scroll to match if URL has hash fragment (e.g., /predict#match-3)
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash) {
+        const el = document.querySelector(window.location.hash);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Highlight briefly
+            el.style.boxShadow = '0 0 0 3px var(--primary)';
+            setTimeout(() => { el.style.boxShadow = ''; }, 2000);
+        }
+    }
+});
 </script>
 
 {% endblock %}

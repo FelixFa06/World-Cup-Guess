@@ -23,6 +23,8 @@
             <div>
                 {% if match.status == 'closed' %}
                 <span class="match-score">{{ match.score_a }} - {{ match.score_b }}</span>
+                {% elif match.status == 'open' and current_user.is_authenticated and not current_user.is_admin %}
+                <a href="{{ url_for('predict_page') }}#match-{{ match.id }}" style="color:var(--primary);">🔓 去预测 →</a>
                 {% elif match.status == 'open' %}
                 <span style="color:var(--primary);">🔓 预测中</span>
                 {% else %}
