@@ -170,23 +170,23 @@ def calculate_daily_stars(db, match_date):
     if max_score == 0:
         return []
 
+    # Delete all existing DailyStar entries for this date,
+    # then recalculate from scratch. This ensures correctness
+    # when multiple matches on the same date are scored sequentially.
+    DailyStar.query.filter_by(match_date=match_date).delete()
+
     # Award to all users with max score (shared)
     stars = []
     for user_id, score in user_scores.items():
         if score == max_score:
-            # Check if already awarded for this date
-            existing = DailyStar.query.filter_by(
-                match_date=match_date, user_id=user_id
-            ).first()
-            if not existing:
-                star = DailyStar(
-                    match_date=match_date,
-                    user_id=user_id,
-                    points_that_day=score,
-                    awarded_at=datetime.now(timezone.utc).replace(tzinfo=None)
-                )
-                db.session.add(star)
-                stars.append(star)
+            star = DailyStar(
+                match_date=match_date,
+                user_id=user_id,
+                points_that_day=score,
+                awarded_at=datetime.now(timezone.utc).replace(tzinfo=None)
+            )
+            db.session.add(star)
+            stars.append(star)
 
     db.session.commit()
     return stars
