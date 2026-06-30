@@ -44,8 +44,8 @@
         {% endif %}
         {% endif %}
 
-        <!-- Public predictions (after match closed) -->
-        {% if match.status == 'closed' and match_predictions_map.get(match.id) %}
+        <!-- Public predictions (after match started/closed, or admin always) -->
+        {% if (match.status == 'closed' or beijing_now >= match.match_time or current_user.is_admin) and match_predictions_map.get(match.id) %}
         <details style="margin-top:0.5rem;">
             <summary style="font-size:0.85rem;color:#888;cursor:pointer;">查看所有群友预测 ({{ match_predictions_map[match.id]|length }}人)</summary>
             <div class="prediction-grid" style="margin-top:0.5rem;">

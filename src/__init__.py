@@ -223,10 +223,11 @@ def create_app():
                 if pred:
                     user_preds[m.id] = pred
 
-        # For closed matches, get all predictions for transparency
+        # For closed or started matches (and admins always), get all predictions
+        beijing_now = utcnow() + timedelta(hours=Config.BEIJING_UTC_OFFSET_HOURS)
         match_predictions_map = {}
         for m in all_matches:
-            if m.status == "closed":
+            if m.status == "closed" or beijing_now >= m.match_time or current_user.is_admin:
                 preds = MatchPrediction.query.filter_by(match_id=m.id).all()
                 match_predictions_map[m.id] = [
                     {"nickname": User.query.get(p.user_id).nickname,
@@ -240,6 +241,7 @@ def create_app():
             matches=all_matches,
             user_preds=user_preds,
             match_predictions_map=match_predictions_map,
+            beijing_now=beijing_now,
         )
 
     @app.route("/rankings")
@@ -1257,10 +1259,11 @@ def create_app():
 
     @app.route("/api/match/<int:match_id>/predictions")
     def api_match_predictions(match_id):
-        """Get all predictions for a match (public after match closed)"""
+        """Get all predictions for a match (public after match started/closed, or admin always)"""
         match = Match.query.get_or_404(match_id)
-        if match.status != "closed":
-            return jsonify({"ok": False, "msg": "比赛尚未结束"}), 400
+        beijing_now = utcnow() + timedelta(hours=Config.BEIJING_UTC_OFFSET_HOURS)
+        if match.status != "closed" and beijing_now < match.match_time and not current_user.is_admin:
+            return jsonify({"ok": False, "msg": "比赛尚未开始"}), 400
 
         preds = MatchPrediction.query.filter_by(match_id=match.id).all()
         result = []
