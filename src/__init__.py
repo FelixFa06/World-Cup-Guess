@@ -118,7 +118,8 @@ def create_app():
         ).limit(5).all()
 
         # Leaderboard top 5
-        leaderboard = get_leaderboard()[:5]
+        full_leaderboard = get_leaderboard()
+        leaderboard = full_leaderboard[:5]
 
         # Latest daily star
         latest_star_date = db.session.query(
@@ -130,12 +131,12 @@ def create_app():
                 match_date=latest_star_date
             ).all()
 
-        # "收米界最长的河" leader
+        # "收米界最长的河" leader (use full leaderboard, not just top 5)
         star_leader = None
-        if leaderboard:
-            max_stars = max(u["star_count"] for u in leaderboard)
+        if full_leaderboard:
+            max_stars = max(u["star_count"] for u in full_leaderboard)
             if max_stars > 0:
-                candidates = [u for u in leaderboard if u["star_count"] == max_stars]
+                candidates = [u for u in full_leaderboard if u["star_count"] == max_stars]
                 star_leader = candidates
 
         return render_template(
